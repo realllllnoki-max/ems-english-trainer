@@ -560,7 +560,6 @@ function speak(text,rate=0.95,btn=null){
   try{const t=cleanSpeech(text);if(!t)return;speechSynthesis.cancel();clearPlaying();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=rate;u.pitch=1;if(!voiceCache)voiceCache=pickVoice();if(voiceCache)u.voice=voiceCache;if(btn){setPlaying(btn);u.onend=()=>{if(playingBtn===btn)clearPlaying();};u.onerror=()=>{if(playingBtn===btn)clearPlaying();};}speechSynthesis.speak(u);}catch(e){clearPlaying();}
 }
 if("speechSynthesis" in window){speechSynthesis.onvoiceschanged=()=>{voiceCache=pickVoice();};speechSynthesis.getVoices();}
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 function norm(t){return t.toLowerCase().replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim();}
 function tokens(t){return norm(t).split(" ").filter(Boolean);}
 function wordSim(refArr,hypArr){
@@ -627,8 +626,7 @@ function renderNode(){
   setProgress();renderSteps(node.step);
   const guiding=(STATS.guideDone||0)<2&&!testActive;
   let micLabel,micClass="b3 b3-lg b3-mic ",micAction;
-  if(!SR){micLabel=`次へ ${I.go}`;micClass+="b3-green";micAction="next";}
-  else if(micOff){micLabel=`次へ ${I.go}`;micClass+="b3-green";micAction="next";}
+  if(micOff){micLabel=`次へ ${I.go}`;micClass+="b3-green";micAction="next";}
   else{micLabel=`${I.mic} 話す`;micClass+="b3-blue";micAction="rec";}
   $("#stage").innerHTML=`
     <div class="who"><span class="ava">🚑</span><span class="nm">あなた（救急隊）</span></div>
@@ -649,18 +647,43 @@ function renderNode(){
   $("#skipBtn").onclick=()=>{FX.tap();stopRecog();speechSynthesis.cancel();clearPlaying();sessionWeak=true;combo=0;afterQuestion(node);};
   setTimeout(()=>speak(node.q,0.95,$("#listenBtn")),350);
 }
-function stopRecog(){if(recog){try{recog.stop();}catch(e){}}recognizing=false;}
-function toggleRecog(node){
-  if(!SR){$("#judgeZone").innerHTML=`<div class="judge mid"><div class="j-head"><div class="j-mark">ℹ️</div><div><div class="j-label">このブラウザは音声認識に未対応です</div><div class="j-score">Chromeなら判定できます。スキップで進めましょう。</div></div></div></div>`;return;}
+/* ================= WHISPER (Speech-to-Text) ================= */
+let whisperPipeline=null,whisperLoading=false,mediaRecorder=null,audioChunks=[];
+async function initWhisper(){
+  try{const{pipeline}=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.15.1');whisperPipeline=await pipeline('automatic-speech-recognition','Xenova/whisper-tiny.en',{quantized:true});}catch(e){console.warn('Whisper init:',e);whisperPipeline=null;}
+}
+function stopRecog(){if(mediaRecorder&&mediaRecorder.state!=='inactive'){mediaRecorder.stop();}recognizing=false;}
+async function toggleRecog(node){
   const mic=$("#micBtn");if(recognizing){stopRecog();return;}
-  FX.tap();speechSynthesis.cancel();clearPlaying();
-  recog=new SR();recog.lang="en-US";recog.interimResults=false;recog.maxAlternatives=3;
-  recognizing=true;mic.classList.add("rec");mic.innerHTML=`<span class="mic-wave"><i></i><i></i><i></i></span> 聞いています…`;
+  if(!whisperPipeline&&!whisperLoading){
+    whisperLoading=true;mic.disabled=true;
+    $("#judgeZone").innerHTML=`<div class="judge mid"><div class="j-head"><div class="j-mark">⏳</div><div><div class="j-label">モデルをダウンロード中...</div><div class="j-score" style="margin-top:6px">初回のみ、少しお時間をいただきます（約75MB）</div></div></div><div style="margin-top:12px;background:var(--bg-soft);border-radius:var(--r-md);padding:10px 12px;height:6px;overflow:hidden"><div id="downloadProgress" style="height:100%;background:var(--green);border-radius:99px;width:0%;transition:width 0.3s"></div></div></div>`;
+    await initWhisper();whisperLoading=false;mic.disabled=false;
+    if(!whisperPipeline){$("#judgeZone").innerHTML=`<div class="judge mid"><div class="j-head"><div class="j-mark">⚠️</div><div><div class="j-label">モデル読み込み失敗</div><div class="j-score">ブラウザの再読み込みをお試しください</div></div></div></div>`;return;}
+    $("#judgeZone").innerHTML='';
+  }
+  FX.tap();speechSynthesis.cancel();clearPlaying();recognizing=true;audioChunks=[];
+  mic.classList.add("rec");mic.innerHTML=`<span class="mic-wave"><i></i><i></i><i></i></span> 聞いています…`;
   $("#judgeZone").innerHTML=`<div class="speak-cue"><span class="sc-dot"></span>マイクに向かって、今すぐ話してください</div>`;
-  recog.onresult=(e)=>{let best="",bs=-1;const ref=tokens(node.q);for(let k=0;k<e.results[0].length;k++){const c=e.results[0][k].transcript;const{sim}=wordSim(ref,tokens(c));if(sim>bs){bs=sim;best=c;}}judge(node,best);};
-  recog.onerror=(e)=>{recognizing=false;mic.classList.remove("rec");mic.innerHTML=`${I.mic} もう一度話す`;const msg=e.error==="not-allowed"?"マイクが許可されていません":e.error==="no-speech"?"聞き取れませんでした。もう一度どうぞ。":"エラーが起きました。もう一度どうぞ。";const help=e.error==="not-allowed"?`<div class="j-score" style="margin-top:6px">アドレスバーの🔒（鍵）アイコン →「マイク」を「許可」に変更し、再読み込みしてください。声を出さずに進めるなら「スキップ」でも続けられます。</div>`:"";$("#judgeZone").innerHTML=`<div class="judge mid"><div class="j-head"><div class="j-mark">🎙️</div><div><div class="j-label">${msg}</div>${help}</div></div></div>`;};
-  recog.onend=()=>{recognizing=false;mic.classList.remove("rec");if(!mic.innerHTML.includes("もう一度"))mic.innerHTML=`${I.mic} もう一度話す`;const jz=$("#judgeZone");if(jz&&jz.querySelector(".speak-cue"))jz.innerHTML="";};
-  try{recog.start();}catch(e){recognizing=false;}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    mediaRecorder=new MediaRecorder(stream);
+    mediaRecorder.ondataavailable=(e)=>{audioChunks.push(e.data);};
+    mediaRecorder.onstop=async()=>{
+      recognizing=false;mic.classList.remove("rec");mic.innerHTML=`${I.mic} もう一度話す`;
+      const audioBlob=new Blob(audioChunks,{type:'audio/webm'});const arrayBuffer=await audioBlob.arrayBuffer();
+      try{const{text}=await whisperPipeline(arrayBuffer);judge(node,text);}catch(e){console.error('Whisper:',e);$("#judgeZone").innerHTML=`<div class="judge mid"><div class="j-head"><div class="j-mark">🎙️</div><div><div class="j-label">認識に失敗しました</div><div class="j-score">もう一度お試しください</div></div></div></div>`;}
+      stream.getTracks().forEach(t=>t.stop());
+    };
+    mediaRecorder.onerror=()=>{recognizing=false;mic.classList.remove("rec");mic.innerHTML=`${I.mic} もう一度話す`;$("#judgeZone").innerHTML=`<div class="judge mid"><div class="j-head"><div class="j-mark">🎙️</div><div><div class="j-label">エラーが起きました</div><div class="j-score">もう一度お試しください</div></div></div></div>`;stream.getTracks().forEach(t=>t.stop());};
+    mediaRecorder.start();
+    setTimeout(()=>{if(recognizing&&mediaRecorder&&mediaRecorder.state==='recording')mediaRecorder.stop();},5000);
+  }catch(e){
+    recognizing=false;mic.classList.remove("rec");mic.innerHTML=`${I.mic} もう一度話す`;
+    const msg=e.name==='NotAllowedError'?'マイクが許可されていません':'マイク接続エラー';
+    const help=e.name==='NotAllowedError'?`<div class="j-score" style="margin-top:6px">ブラウザの設定でマイク使用を許可してください</div>`:'';
+    $("#judgeZone").innerHTML=`<div class="judge mid"><div class="j-head"><div class="j-mark">🎙️</div><div><div class="j-label">${msg}</div>${help}</div></div></div>`;
+  }
 }
 function comboMsg(n){
   if(n>=5)return "🌟 "+n+"連続！止まらない！";
