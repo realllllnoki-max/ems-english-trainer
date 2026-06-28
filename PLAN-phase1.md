@@ -13,7 +13,8 @@
 | 価格 | 980円 / 月額 / Stripe サブスクリプション（JPY） |
 | ログイン | Supabase Auth（メール＋Google） |
 | 学習記録 | localStorage → Supabase クラウド保存へ移行 |
-| 配信 | GitHub Pages → Vercel へ移行（Webhook と環境変数のため） |
+| 配信（フロント） | GitHub Pages または Cloudflare Pages（**無料・商用OK**のまま継続） |
+| 配信（バックエンド） | Supabase Edge Functions（決済・Webhook・有料判定） |
 
 ---
 
@@ -53,7 +54,7 @@
 
 ### 制約（だから裏側が必要）
 - JS もデータも全部ブラウザに配布されるため、**フロントだけでは課金を守れない**。
-- GitHub Pages は静的配信のみ。**Stripe Webhook を受ける場所がない** → サーバー（Supabase Edge Functions）と新しい配信先（Vercel）が必要。
+- GitHub Pages は静的配信のみ。**Stripe Webhook を受ける場所がない** → サーバー処理は **Supabase Edge Functions** が担当する（フロントは GitHub Pages / Cloudflare Pages のまま無料・商用OKで継続でき、Vercel等への移行は不要）。
 
 ---
 
@@ -61,6 +62,7 @@
 
 ```
 ブラウザ（既存アプリ＋ログインUI）
+  ▲ 静的配信: GitHub Pages または Cloudflare Pages（無料・商用OK）
   │
   ├─ Supabase Auth ───────── メール / Google ログイン
   │
@@ -132,7 +134,7 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 ### Step 1. 環境準備（コードなし）
 - [ ] Supabase プロジェクト用意（MCP接続済み。既存利用 or 新規作成を決める）
 - [ ] Stripe アカウント作成 → **テストモード**の Publishable / Secret キー取得
-- [ ] Vercel アカウント（GitHub連携）
+- [ ] フロント配信先の決定（GitHub Pages 継続 or Cloudflare Pages。どちらも無料・商用OK）※新規アカウント・追加費用は不要
 
 ### Step 2. Supabase スキーマ
 - [ ] `profiles` / `user_progress` テーブル作成（migration）
@@ -173,9 +175,10 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - [ ] メニューに「プラン管理（解約・カード変更）」ボタン
 
 ### Step 9. デプロイ
-- [ ] Vercel へデプロイ（環境変数: Supabase URL/anon key, Stripe price_id 等）
+- [ ] フロント: GitHub Pages 継続、または Cloudflare Pages へ（どちらも無料・商用OK）
+- [ ] フロントの公開設定値（Supabase URL / anon key / Stripe publishable key）を埋め込み ※すべて公開して安全な値のみ
+- [ ] バックエンド: Supabase Edge Functions をデプロイ＋シークレット設定（service role / Stripe secret / webhook secret は Edge のみ）
 - [ ] 独自ドメイン設定（任意）
-- [ ] GitHub Pages からの導線整理 / リダイレクト
 
 ### Step 10. 通し検証（テストモード）
 - [ ] サインアップ → 無料範囲が使える
@@ -197,6 +200,51 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 | `STRIPE_PRICE_ID` | Edge | 980円プランの price |
 
 > サーバー専用キー（service role / Stripe secret）は**絶対にフロントへ出さない**。Edge Function 内のみ。
+
+---
+
+## 6.5 運用コストとキャパシティ
+
+> 為替は概算 **1ドル≒155円**。価格は2026年時点の各社プラン基準。
+
+### コスト構造
+| サービス | 無料枠 | 有料の入口 | 課金の性質 |
+|---|---|---|---|
+| **Stripe** | 月額固定なし | — | 決済ごと **3.6%**（日本のカード）。980円なら**約35円/件** |
+| **Supabase** | 0円（MAU 5万・DB 500MB・Edge 50万回）※1週間無アクセスで一時停止 | **Pro $25/月**（≒¥3,900）MAU 10万・DB 8GB・Edge 200万回・停止なし・自動バックアップ | 月額固定 |
+| **フロント配信** | **GitHub Pages / Cloudflare Pages = 0円・商用OK** | — | **追加費用なし** |
+| **独自ドメイン** | — | 年¥1,500前後（≒¥125/月） | 年額（任意） |
+
+> 前回案の Vercel は不要にした。Vercel Hobby は無料だが「非商用限定」のため本番課金で Pro($20/月) が必要になる。
+> GitHub Pages / Cloudflare Pages は無料かつ商用OKなので、フロント配信費は **検証中も本番も¥0**。
+
+### 2つの運用モード
+- **A. 検証フェーズ:** Supabase Free ＋ 無料配信 ＋ Stripeテスト → 固定費 **ほぼ¥0**（Supabase一時停止に注意。実験用途まで）
+- **B. 本番運用:** Supabase Pro $25 ＋ 無料配信 ＋ Stripe 3.6% → 固定費 **約¥4,000/月＋ドメイン**
+
+### 有料ユーザー数 → 損益（本番モード・固定費 約¥4,000/月）
+| 有料数 | 売上(980円) | Stripe手数料 | 固定費 | **手残り** |
+|---|---|---|---|---|
+| 5人 | 4,900 | 176 | 4,000 | **約+720（損益分岐点付近）** |
+| 50人 | 49,000 | 1,764 | 4,000 | **約+43,200** |
+| 100人 | 98,000 | 3,528 | 4,000 | **約+90,500** |
+| 500人 | 490,000 | 17,640 | 4,000 | **約+468,000** |
+| 1,000人 | 980,000 | 35,280 | 4,000 | **約+940,700** |
+| 5,000人 | 4,900,000 | 176,400 | ~10,000 | **約+4,710,000** |
+
+→ **約5人で黒字**。固定費が小さく、ほぼ「人数 × 約945円」が利益になる。
+
+### キャパシティ（何人まで捌けるか）
+このアプリはデータが極小（全ファイル約330KB、1ユーザーの進捗JSONは数KB）でインフラがボトルネックになりにくい。
+
+| プラン | 実質上限 | 最初に当たる制約 |
+|---|---|---|
+| 無料枠 | 〜約1,000人（検証用） | Supabase一時停止 |
+| **Supabase Pro（¥約4,000/月）＋無料配信** | **約5〜10万人** | MAU 10万 / Edge Function 200万回（1人月30操作なら約6.6万人） |
+| Supabase 上位プラン | 数十万人〜 | MAU超過の従量・帯域 |
+
+- DB容量 8GB ÷ 5KB ≒ **約160万人分** → DBは当面ボトルネックにならない。
+- **結論: ¥約4,000/月の構成のまま数万人規模（MAU 10万）まで増強不要。**
 
 ---
 
@@ -229,7 +277,7 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - テストモードで「サインアップ → 決済 → Lv3解放 → 解約 → 再ロック」が一通り動く
 - 別端末ログインで学習記録が復元される
 - 特商法表記・規約・プライバシーの3ページが存在し導線がある
-- Vercel 上で本番URLが動いている（決済は本番キー切替前のテスト状態でOK）
+- 本番URL（GitHub Pages / Cloudflare Pages）が動いている（決済は本番キー切替前のテスト状態でOK）
 
 ---
 
