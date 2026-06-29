@@ -167,11 +167,14 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - 補足: SDKはCDN配信のため、ログイン操作には通信が必要（オフライン時はログイン不可・無料範囲は動作）。
 - 補足: 既定でメール確認ON。新規登録時は確認メール内リンクで有効化される。
 
-### Step 4. クラウド同期（`window.storage` 差し替え）
-- [ ] ログイン中は `storage.get/set` を `user_progress` 読み書きに切替
-- [ ] 未ログイン時は従来どおり localStorage
-- [ ] ログイン時、ローカルにある既存進捗をクラウドへ初回マージ
-- [ ] 既存の保存キー（`ems_progress_v1` 他）はそのまま流用
+### Step 4. クラウド同期（`window.storage` 差し替え）✅ 完了
+- [x] `ems-sync.js` を追加し `window.storage.set` をラップ（local保存＋クラウドupsert）
+- [x] オフラインファースト設計: get は常に localStorage（未ログイン・オフラインでも動作）
+- [x] ログイン時、**キー単位で更新時刻が新しい方を採用**してマージ（別端末の続きを復元）
+- [x] 取り込み後はアプリ状態を再読込（loadProgress/loadStats等）して画面更新
+- [x] 既存の保存キー（`ems_progress_v1`/`ems_stats_v1`/`ems_vocab_v1`/`ems_vocab_weak_v1`）を流用、`ems_sound`等の端末設定は非同期
+- [x] 実DB検証（実JWT・RLS下）: upsert / pull / 新しい方優先 / 他人の行は不可視 / **is_proのクライアント書込はブロック**
+- 既知の制限（フェーズ2で対応可）: 1端末で複数アカウントを切替えると、ローカル記録が次アカウントへ混ざりうる（ログアウト時クリア等で対処予定）
 
 ### Step 5. Stripe 決済（解放動線）
 - [ ] Stripe で商品「EMS English Pro / 税込1200円・月額・JPY」を作成（price_id 取得）
