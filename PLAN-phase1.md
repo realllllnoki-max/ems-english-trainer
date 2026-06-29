@@ -176,16 +176,25 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - [x] 実DB検証（実JWT・RLS下）: upsert / pull / 新しい方優先 / 他人の行は不可視 / **is_proのクライアント書込はブロック**
 - 既知の制限（フェーズ2で対応可）: 1端末で複数アカウントを切替えると、ローカル記録が次アカウントへ混ざりうる（ログアウト時クリア等で対処予定）
 
+> **決済アカウント方針: 既存Stripeアカウントに相乗り（決定）。** 既存事業の決済と混ざらないよう、
+> `stripe-webhook` は **STRIPE_PRICE_ID でフィルタ**し、本アプリの価格のサブスクリプションだけを処理する。
+
 ### Step 5. Stripe 決済（解放動線）
-- [ ] Stripe で商品「EMS English Pro / 税込1200円・月額・JPY」を作成（price_id 取得）
-- [ ] Edge Function `create-checkout-session`（要ログイン → Checkoutへ）
-- [ ] アプリに「Proにする」ボタン（ロック画面・メニュー）
+- [x] Edge Function `create-checkout-session` 実装＋デプロイ（要ログイン→Checkout URL返却、Stripe顧客の作成/紐付け）
+- [x] Edge Function `create-portal-session` 実装＋デプロイ（解約・カード変更のポータルURL返却）
+- [ ] Stripe ダッシュボードで商品「EMS English Pro / 税込1200円・月額・JPY」を作成（**ユーザー作業**、price_id取得）
+- [ ] アプリに「Proにする」ボタン（Step 7で実装）
+- リポジトリにソース保存: `supabase/functions/<name>/index.ts`
 
 ### Step 6. Webhook（有料判定の確定）
-- [ ] Edge Function `stripe-webhook`
-  - `checkout.session.completed` → `is_pro=true`, `stripe_customer_id` 保存
-  - `customer.subscription.deleted` / 失効 → `is_pro=false`
-- [ ] Stripe 側に Webhook エンドポイント登録（署名シークレット設定）
+- [x] Edge Function `stripe-webhook` 実装＋デプロイ（`verify_jwt=false`＋Stripe署名検証）
+  - `checkout.session.completed` → サブスク取得→自社priceなら `is_pro=true`＋`current_period_end`
+  - `customer.subscription.updated/deleted` → status に応じ `is_pro` 切替（失効で false）
+  - **STRIPE_PRICE_ID で自社商品のみ処理**（相乗り対策）
+  - service role は Edge 既定の `SUPABASE_SERVICE_ROLE_KEY` を使用（フロントには出ない）
+- [ ] Stripe 側に Webhook エンドポイント登録（**ユーザー作業**、署名シークレット取得）
+- [ ] シークレット設定（**ユーザー作業**, Supabase Dashboard → Edge Functions → Secrets）:
+  `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_ID`
 
 ### Step 7. フロントのロック/解放
 - [ ] ログイン後 `profiles.is_pro` を取得
