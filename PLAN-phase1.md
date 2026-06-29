@@ -13,8 +13,11 @@
 | 価格 | 980円 / 月額 / Stripe サブスクリプション（JPY） |
 | ログイン | Supabase Auth（メール＋Google） |
 | 学習記録 | localStorage → Supabase クラウド保存へ移行 |
+| 提供形態 | **Web ＋ PWA**（ホーム画面に追加できるWebアプリ）。App Store/iOSネイティブは当面なし（フェーズ2の選択肢） |
 | 配信（フロント） | GitHub Pages または Cloudflare Pages（**無料・商用OK**のまま継続） |
 | 配信（バックエンド） | Supabase Edge Functions（決済・Webhook・有料判定） |
+
+> **提供形態を「Web＋PWA」に確定。** Apple/Google の課金手数料（15〜30%）を回避でき、Stripe（3.6%）のまま・追加固定費ほぼ¥0でアプリ風の体験を提供できる。共通アカウント／有料判定／記録同期のため **Supabase は必要**（iPhone・Android・PCを横断して同じアカウントで使えるようにするため）。
 
 ---
 
@@ -174,17 +177,26 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - [ ] Edge Function `create-portal-session`
 - [ ] メニューに「プラン管理（解約・カード変更）」ボタン
 
-### Step 9. デプロイ
+### Step 9. PWA化（ホーム画面に追加できるアプリ風に）
+- [ ] `manifest.json` 追加（アプリ名・アイコン・テーマ色・`display:standalone`）
+- [ ] Service Worker 追加（オフラインキャッシュ。`index.html`/`ems-app.js`/`ems-data.js` を事前キャッシュ）
+- [ ] アイコン画像（既存のSVGロゴ流用で各サイズ生成）
+- [ ] 「ホーム画面に追加」案内（iOS Safari は手動追加なので軽い導線を出す）
+- [ ] HTTPS配信であること（GitHub Pages / Cloudflare Pages とも標準対応）
+- ※ App Store審査・Apple Developer登録は不要。追加固定費¥0。
+
+### Step 10. デプロイ
 - [ ] フロント: GitHub Pages 継続、または Cloudflare Pages へ（どちらも無料・商用OK）
 - [ ] フロントの公開設定値（Supabase URL / anon key / Stripe publishable key）を埋め込み ※すべて公開して安全な値のみ
 - [ ] バックエンド: Supabase Edge Functions をデプロイ＋シークレット設定（service role / Stripe secret / webhook secret は Edge のみ）
 - [ ] 独自ドメイン設定（任意）
 
-### Step 10. 通し検証（テストモード）
+### Step 11. 通し検証（テストモード）
 - [ ] サインアップ → 無料範囲が使える
 - [ ] テストカード `4242...` で決済 → `is_pro=true` → Lv3解放
 - [ ] 解約 → `is_pro=false` → 再ロック
 - [ ] 機種変想定（別ブラウザでログイン）→ 進捗が復元される
+- [ ] スマホで「ホーム画面に追加」→ アプリ風に起動できる（PWA確認）
 
 ---
 
@@ -287,7 +299,22 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - 年額プラン（割安）
 - 解約防止・リマインド
 - 学習分析ダッシュボード強化
-- アプリ化（PWA / ストア配信）
+
+### App Store / Google Play 配信（検討する場合のコスト比較）
+フェーズ1は **Web＋PWA** で進める（PWAはフェーズ1のStep 9で対応済み）。
+ストア配信は手数料・固定費・開発が一段上がるため、需要が見えてから検討する。
+
+| 提供形態 | 追加固定費 | 決済手数料 | 備考 |
+|---|---|---|---|
+| **Web ＋ PWA（採用）** | **¥0** | Stripe **3.6%** | App Store審査・Apple登録不要。今回これ |
+| iOS（Apple IAP・小規模事業者※） | Apple Developer **$99/年** | **15%** | StoreKitへ作り替え。審査リジェクトのリスク |
+| iOS（Apple IAP・通常） | $99/年 | **30%** | 年商10万ドル超で通常レート |
+| Android（Google Play） | $25（一度きり） | 15〜30% | Play Billingが必要 |
+
+- ※小規模事業者: 年商10万ドル未満なら App Store Small Business Program で15%。
+- iOSアプリ内から「Webで安く買える」と誘導するのは Apple規約で原則制限（anti-steering）。
+- 980円での手残り目安: Web=約945円 / iOS(15%)=約833円 / iOS(30%)=約686円。
+- ストアに出すなら「Web版で契約 → アプリはログイン専用クライアント」のハイブリッドも選択肢。
 
 ---
 
