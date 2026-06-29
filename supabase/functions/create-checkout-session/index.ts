@@ -1,6 +1,7 @@
 // create-checkout-session
 // ログイン済みユーザー向けに Stripe Checkout(サブスク/税込1200円) のセッションを作り URL を返す。
-// verify_jwt = true（Supabaseゲートウェイで認証必須）。
+// verify_jwt = false（ゲートウェイ任せにせず、関数内で getUser によりトークン検証する独自認証）。
+//   ※ ブラウザからの呼び出しで Authorization が確実に渡るよう、verify_jwt は無効化。
 // 必要シークレット: STRIPE_SECRET_KEY, STRIPE_PRICE_ID
 //   （SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY は Edge 既定で利用可能）
 import Stripe from "npm:stripe@16";

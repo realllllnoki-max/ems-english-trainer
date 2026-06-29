@@ -1,6 +1,6 @@
 // create-portal-session
 // ログイン済みユーザーの Stripe カスタマーポータル(解約・カード変更)のURLを返す。
-// verify_jwt = true。必要シークレット: STRIPE_SECRET_KEY
+// verify_jwt = false（関数内 getUser で独自にトークン検証）。必要シークレット: STRIPE_SECRET_KEY
 //   （Stripe側で Billing Portal を有効化しておくこと）
 import Stripe from "npm:stripe@16";
 import { createClient } from "jsr:@supabase/supabase-js@2";

@@ -65,10 +65,15 @@
   async function startCheckout() {
     var a = auth();
     if (!a || !a.client) { setPayMsg("ログイン機能を読み込めませんでした", "err"); return; }
-    if (!a.user) { closePay(); a.open(); return; } // 未ログインならログインへ
     setPayMsg("決済ページを準備しています…");
     try {
-      var r = await a.client.functions.invoke("create-checkout-session", { body: { returnUrl: baseUrl() } });
+      var sres = await a.client.auth.getSession();
+      var session = sres && sres.data && sres.data.session;
+      if (!session) { closePay(); a.open(); return; } // 未ログインならログインへ
+      var r = await a.client.functions.invoke("create-checkout-session", {
+        body: { returnUrl: baseUrl() },
+        headers: { Authorization: "Bearer " + session.access_token }
+      });
       if (r.error) throw r.error;
       var url = r.data && r.data.url;
       if (url) { location.href = url; } else { setPayMsg("決済URLを取得できませんでした", "err"); }
@@ -80,11 +85,17 @@
 
   async function openPortal(btn) {
     var a = auth();
-    if (!a || !a.client || !a.user) return;
+    if (!a || !a.client) return;
     var old = btn ? btn.textContent : "";
     if (btn) { btn.disabled = true; btn.textContent = "準備中…"; }
     try {
-      var r = await a.client.functions.invoke("create-portal-session", { body: { returnUrl: baseUrl() } });
+      var sres = await a.client.auth.getSession();
+      var session = sres && sres.data && sres.data.session;
+      if (!session) { toast("ログインが必要です"); return; }
+      var r = await a.client.functions.invoke("create-portal-session", {
+        body: { returnUrl: baseUrl() },
+        headers: { Authorization: "Bearer " + session.access_token }
+      });
       if (r.error) throw r.error;
       var url = r.data && r.data.url;
       if (url) { location.href = url; return; }

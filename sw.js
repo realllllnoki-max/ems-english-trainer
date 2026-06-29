@@ -6,7 +6,7 @@
  *   - その他の同一オリジン資産は stale-while-revalidate
  * 更新時は CACHE のバージョンを上げる。
  * ========================================================== */
-const CACHE = "ems-cache-v2";
+const CACHE = "ems-cache-v3";
 const SHELL = [
   "./",
   "./index.html",
