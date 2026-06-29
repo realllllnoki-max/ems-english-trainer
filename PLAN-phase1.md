@@ -196,16 +196,21 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - [ ] シークレット設定（**ユーザー作業**, Supabase Dashboard → Edge Functions → Secrets）:
   `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_ID`
 
-### Step 7. フロントのロック/解放
-- [ ] ログイン後 `profiles.is_pro` を取得
-- [ ] **問題開始時ガード**: `!is_pro` かつ「Lv1先頭シナリオ以外」ならペイウォール
-- [ ] `lvUnlocked()` に `is_pro` を反映（Lv2以降をロック）
-- [ ] 単語クイズ・記録機能のロック反映
-- [ ] ロック画面／2問目タップ時に「Proで解放（税込1200円/月）」CTA
+### Step 7. フロントのロック/解放 ✅ 完了
+- [x] ログイン後 `profiles.is_pro` を取得（`ems-auth.js`: `EMSAuth.refreshPro` → `window.EMS_PRO`＋`ems-pro-change`イベント）
+- [x] **アクション単位ガード**（`ems-paywall.js`）: `startScene`/`startQuiz`/`startTest` をラップし、非Proが「Lv1先頭シナリオ以外」を開いたらペイウォール
+- [x] ペイウォールモーダル（特典一覧・税込1200円/月・「Proにする」「まずは無料の1問を試す」）
+- [x] 「Proにする」→ `create-checkout-session` 呼び出しで Checkout へ遷移（未ログインならログインへ誘導）
+- [x] 決済戻り（`?checkout=success`）検知 → is_pro を数回ポーリングしてUI更新＋トースト
+- 設計メモ: 既存の `lvUnlocked()`（進捗で解放）は変更せず、収益ロックは**開始アクションで一元的に**かける（最小侵襲）
+- 無料シナリオ＝Lv1の先頭（現データでは `choking`）。別シナリオを無料にしたい場合は容易に変更可
+- 検証: ロック→ペイウォール / 無料1問は通過 / Pro時バイパス / 単語クイズもロック をブラウザで確認
 
-### Step 8. カスタマーポータル
-- [ ] Edge Function `create-portal-session`
-- [ ] メニューに「プラン管理（解約・カード変更）」ボタン
+### Step 8. カスタマーポータル ✅ 完了
+- [x] Edge Function `create-portal-session`（Step 5でデプロイ済み）
+- [x] アカウントモーダルに「プラン管理（解約・カード変更）」ボタン（Pro時のみ表示、`ems-paywall.js`）
+- [x] アカウントモーダルにプラン状態バッジ＋「Proにアップグレード」ボタン（非Pro時）
+- 補足: Stripe側で Billing Portal の有効化が必要（テスト/本番とも）
 
 ### Step 9. PWA化（ホーム画面に追加できるアプリ風に）✅ 完了
 - [x] `manifest.json` 追加（アプリ名・アイコン3種・テーマ色・`display:standalone`・相対パス）

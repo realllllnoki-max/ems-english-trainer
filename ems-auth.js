@@ -14,6 +14,7 @@
   var EMSAuth = {
     client: null,
     user: null,
+    isPro: false,
     _cbs: [],
     onChange: function (cb) {
       this._cbs.push(cb);
@@ -24,9 +25,26 @@
       for (var i = 0; i < list.length; i++) { try { list[i](u); } catch (e) {} }
     },
     open: function () { openModal(); },
-    signOut: function () { return doSignOut(); }
+    signOut: function () { return doSignOut(); },
+    refreshPro: function () { return refreshPro(); }
   };
   window.EMSAuth = EMSAuth;
+  window.EMS_PRO = false;
+
+  function setPro(v) {
+    v = !!v;
+    EMSAuth.isPro = v;
+    window.EMS_PRO = v;
+    try { document.dispatchEvent(new CustomEvent("ems-pro-change", { detail: v })); } catch (e) {}
+  }
+
+  // profiles.is_pro を取得して反映（有料判定はサーバー(Webhook)が正本。ここは表示用の取得）
+  function refreshPro() {
+    if (!EMSAuth.client || !EMSAuth.user) { setPro(false); return Promise.resolve(false); }
+    return EMSAuth.client.from("profiles").select("is_pro").eq("id", EMSAuth.user.id).single()
+      .then(function (r) { var v = !!(r && r.data && r.data.is_pro); setPro(v); return v; })
+      .catch(function () { setPro(false); return false; });
+  }
 
   if (!window.supabase || !window.supabase.createClient) {
     console.warn("[ems-auth] Supabase SDK が読み込めませんでした（オフライン等）。ログイン機能は無効です。");
@@ -63,11 +81,11 @@
     // 既存セッションの復元＋状態変化の監視
     EMSAuth.client.auth.getUser().then(function (res) {
       EMSAuth.user = (res && res.data && res.data.user) || null;
-      renderHeader(); EMSAuth._emit();
+      renderHeader(); EMSAuth._emit(); refreshPro();
     });
     EMSAuth.client.auth.onAuthStateChange(function (_event, session) {
       EMSAuth.user = (session && session.user) || null;
-      renderHeader(); renderModalState(); EMSAuth._emit();
+      renderHeader(); renderModalState(); EMSAuth._emit(); refreshPro();
     });
   }
 
