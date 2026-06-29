@@ -6,7 +6,7 @@
  *   - その他の同一オリジン資産は stale-while-revalidate
  * 更新時は CACHE のバージョンを上げる。
  * ========================================================== */
-const CACHE = "ems-cache-v1";
+const CACHE = "ems-cache-v2";
 const SHELL = [
   "./",
   "./index.html",
@@ -14,12 +14,17 @@ const SHELL = [
   "./ems-app.js",
   "./ems-auth.js",
   "./ems-sync.js",
+  "./ems-paywall.js",
   "./ems-pwa.js",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png",
-  "./apple-touch-icon-180.png"
+  "./apple-touch-icon-180.png",
+  "./tokushoho.html",
+  "./terms.html",
+  "./privacy.html",
+  "./legal.css"
 ];
 
 self.addEventListener("install", (e) => {
