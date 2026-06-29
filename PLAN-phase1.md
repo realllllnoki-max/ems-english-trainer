@@ -141,14 +141,21 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 > 各ステップは独立して動作確認できる粒度に分割。すべて **Stripe テストモード** で進める。
 
 ### Step 1. 環境準備（コードなし）
-- [ ] Supabase プロジェクト用意（MCP接続済み。既存利用 or 新規作成を決める）
+- [x] **Supabase プロジェクト作成済み**（Free / 東京リージョン）
 - [ ] Stripe アカウント作成 → **テストモード**の Publishable / Secret キー取得
 - [ ] フロント配信先の決定（GitHub Pages 継続 or Cloudflare Pages。どちらも無料・商用OK）※新規アカウント・追加費用は不要
 
-### Step 2. Supabase スキーマ
-- [ ] `profiles` / `user_progress` テーブル作成（migration）
-- [ ] RLS ポリシー設定（上記4章準拠）
-- [ ] `auth.users` 作成時に `profiles` を自動生成するトリガー
+> **作成済み Supabase プロジェクト情報（フロント設定で使う・公開して安全な値）**
+> - プロジェクト名: `ems-english-trainer` / ref: `widfjtfhqjpnjdfsnlnx` / Region: ap-northeast-1（東京）/ プラン: Free
+> - `SUPABASE_URL`: `https://widfjtfhqjpnjdfsnlnx.supabase.co`
+> - `SUPABASE_ANON_KEY`（publishable）: `sb_publishable_d3iTRI9F9tQddtvf7PjiVA_4RqoTpqr`
+> - ⚠️ service role キーはここに記載しない（Edge Function のシークレットにのみ設定）
+
+### Step 2. Supabase スキーマ ✅ 適用済み
+- [x] `profiles` / `user_progress` テーブル作成（migration `init_profiles_and_progress`）
+- [x] RLS ポリシー設定（profiles=本人SELECTのみ／is_proはクライアント書込不可、user_progress=本人CRUD）
+- [x] `auth.users` 作成時に `profiles` を自動生成するトリガー（`handle_new_user`）
+- [x] セキュリティ強化: トリガー関数の REST 直叩きを禁止（EXECUTE剥奪）→ アドバイザー警告0件
 
 ### Step 3. 認証UI（フロント）
 - [ ] `index.html` に Supabase JS SDK を読み込み
