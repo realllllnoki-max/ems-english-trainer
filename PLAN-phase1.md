@@ -157,11 +157,15 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - [x] `auth.users` 作成時に `profiles` を自動生成するトリガー（`handle_new_user`）
 - [x] セキュリティ強化: トリガー関数の REST 直叩きを禁止（EXECUTE剥奪）→ アドバイザー警告0件
 
-### Step 3. 認証UI（フロント）
-- [ ] `index.html` に Supabase JS SDK を読み込み
-- [ ] ログイン/サインアップ画面（メール＋Googleボタン）追加
-- [ ] ログイン状態の取得・ヘッダーへのアカウント表示
-- [ ] 未ログインでも無料範囲は触れる（任意ログイン）
+### Step 3. 認証UI（フロント）✅ メール認証ぶん完了
+- [x] `index.html` に Supabase JS SDK（CDN）を読み込み
+- [x] ログイン/サインアップ画面（**メール＋パスワード**）追加 … `ems-auth.js`＋index.htmlのモーダル
+- [x] ログイン状態の取得・ヘッダーへのアカウント表示（`#emsAccount`、頭文字アバター）
+- [x] 未ログインでも無料範囲は触れる（任意ログイン。`window.EMSAuth` を後続ステップ用に公開）
+- [x] バックエンド検証: 新規ユーザー作成→profiles自動生成（トリガー）を実DBで確認
+- [ ] **Google ログイン**（後追い） … Google OAuth クライアントID/シークレットの用意後に追加
+- 補足: SDKはCDN配信のため、ログイン操作には通信が必要（オフライン時はログイン不可・無料範囲は動作）。
+- 補足: 既定でメール確認ON。新規登録時は確認メール内リンクで有効化される。
 
 ### Step 4. クラウド同期（`window.storage` 差し替え）
 - [ ] ログイン中は `storage.get/set` を `user_progress` 読み書きに切替

@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --green:#58cc02; --green-dark:#46a302; --green-soft:#d7ffb8;
@@ -611,6 +612,33 @@
     .stp .w{display:none}
     .mode .ml{font-size:.64rem}
   }
+  /* ===== Account button (header) ===== */
+  .acct-btn{
+    background:var(--bg-soft);border:2px solid var(--line);color:var(--ink-soft);
+    font-weight:800;font-size:.8rem;padding:7px 12px;min-height:40px;border-radius:var(--r-pill);
+    display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 0 var(--line);
+  }
+  .acct-btn:active{transform:translateY(2px);box-shadow:none}
+  .acct-btn .av{
+    width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;
+    font-weight:900;font-size:.72rem;display:inline-flex;align-items:center;justify-content:center;
+  }
+  /* ===== Auth modal ===== */
+  .auth-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center;padding:16px}
+  .auth-ov.on{display:flex}
+  .auth-card{background:#fff;border-radius:var(--r-lg);max-width:380px;width:100%;padding:22px 22px 24px;box-shadow:0 14px 44px rgba(0,0,0,.22);position:relative}
+  .auth-close{position:absolute;top:12px;right:14px;background:none;border:none;font-size:1.5rem;color:var(--hare);line-height:1;padding:4px;min-height:auto}
+  .auth-card h3{font-size:1.3rem;font-weight:900;color:var(--ink);margin-bottom:3px}
+  .auth-card .sub{font-size:.84rem;color:var(--ink-soft);margin-bottom:16px}
+  .auth-tabs{display:flex;gap:8px;margin-bottom:16px}
+  .auth-tab{flex:1;padding:10px;border:2px solid var(--line);background:#fff;border-radius:var(--r-md);font-weight:800;font-size:.9rem;color:var(--ink-soft)}
+  .auth-tab.on{background:var(--blue-soft);border-color:var(--blue);color:var(--blue-dark)}
+  .auth-field{width:100%;padding:13px 14px;border:2px solid var(--line);border-radius:var(--r-md);font-size:1rem;font-family:inherit;margin-bottom:10px;color:var(--ink)}
+  .auth-field:focus{outline:none;border-color:var(--blue)}
+  .auth-msg{font-size:.82rem;font-weight:800;margin:2px 2px 12px;min-height:1.1em;line-height:1.4}
+  .auth-msg.err{color:var(--red-dark)}
+  .auth-msg.ok{color:var(--green-dark)}
+  .auth-acct-row{display:flex;align-items:center;gap:10px;margin-bottom:18px;font-size:.9rem;color:var(--ink-soft);word-break:break-all}
 </style>
 </head>
 <body>
@@ -624,6 +652,7 @@
         <p>Interview Trainer</p>
       </div>
       <div class="count-pill" id="countPill"></div>
+      <button class="acct-btn" id="emsAccount" type="button">ログイン</button>
     </div>
   </header>
   <div class="wrap">
@@ -668,7 +697,37 @@
   </div>
 </section>
 
+<!-- ===== Auth modal ===== -->
+<div class="auth-ov" id="authOv">
+  <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <button class="auth-close" id="authClose" aria-label="閉じる">×</button>
+
+    <!-- ログイン / 新規登録 -->
+    <div id="authForms">
+      <h3 id="authTitle">おかえりなさい</h3>
+      <p class="sub" id="authSub">続きを記録するにはログインしてください</p>
+      <div class="auth-tabs">
+        <button class="auth-tab on" id="tabLogin" type="button">ログイン</button>
+        <button class="auth-tab" id="tabSignup" type="button">新規登録</button>
+      </div>
+      <input class="auth-field" id="authEmail" type="email" autocomplete="email" inputmode="email" placeholder="メールアドレス">
+      <input class="auth-field" id="authPass" type="password" autocomplete="current-password" placeholder="パスワード（6文字以上）">
+      <div class="auth-msg" id="authMsg"></div>
+      <button class="b3 b3-green b3-lg" id="authSubmit" type="button">ログイン</button>
+    </div>
+
+    <!-- ログイン中 -->
+    <div id="authAccount" style="display:none">
+      <h3>アカウント</h3>
+      <p class="sub">ログイン中です</p>
+      <div class="auth-acct-row"><span class="av" id="acctAv">U</span><span id="acctEmail"></span></div>
+      <button class="b3 b3-white b3-lg" id="authSignout" type="button">ログアウト</button>
+    </div>
+  </div>
+</div>
+
 <script src="ems-data.js"></script>
 <script src="ems-app.js"></script>
+<script src="ems-auth.js"></script>
 </body>
 </html>
