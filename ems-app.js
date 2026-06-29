@@ -330,7 +330,14 @@ function cardHTML(s){
     else if(p.weak){cls+=" weak";badge=`<span class="badge">⚠️</span>`;}
     if(p.best>0)best=`<span class="best">最高 ${p.best}%</span>`;
   }
-  return {cls,html:`${badge}<div class="ico">${s.icon}</div><div class="ttl">${s.title}</div><div class="en">${s.en}</div><span class="fw">${f.name}</span>${best}`};
+  // 課金ステータスのバッジ（ems-paywall.js が読み込まれていれば）
+  let lockflag="";
+  if(typeof window.emsSceneStatus==="function"){
+    const st=window.emsSceneStatus(s);
+    if(st==="free"){cls+=" is-free";lockflag=`<span class="lockflag free">無料</span>`;}
+    else if(st==="locked"){cls+=" is-locked";lockflag=`<span class="lockflag locked">🔒</span>`;}
+  }
+  return {cls,html:`${badge}${lockflag}<div class="ico">${s.icon}</div><div class="ttl">${s.title}</div><div class="en">${s.en}</div><span class="fw">${f.name}</span>${best}`};
 }
 function renderChips(){
   $("#chips").innerHTML=CATS.map(c=>{const n=c==="すべて"?SCENES.length:SCENES.filter(s=>s.cat===c).length;return `<button class="chip${c===activeCat?" on":""}" data-c="${c}">${c} ${n}</button>`;}).join("");

@@ -25,6 +25,13 @@
   }
   function isFree(s) { var f = freeScene(); return !!(f && s && s.id === f.id); }
 
+  // カード描画(ems-app.js cardHTML)から参照する課金ステータス
+  // 戻り: "free"（無料の1問）/ "locked"（Pro限定）/ null（Pro なのでロックなし）
+  window.emsSceneStatus = function (s) {
+    if (pro()) return null;
+    return isFree(s) ? "free" : "locked";
+  };
+
   /* ---------- エントリーをラップして課金ゲート ---------- */
   var _startScene = window.startScene;
   if (typeof _startScene === "function") {
@@ -160,9 +167,13 @@
     handleReturn();
   });
 
-  // is_pro / ログイン状態が変わったらプラン表示を更新
-  document.addEventListener("ems-pro-change", renderPlan);
+  // is_pro / ログイン状態が変わったらプラン表示＋カードのロック表示を更新
+  function onProChange() {
+    renderPlan();
+    if (typeof renderMenuBody === "function") { try { renderMenuBody(); } catch (e) {} }
+  }
+  document.addEventListener("ems-pro-change", onProChange);
   if (window.EMSAuth && typeof window.EMSAuth.onChange === "function") {
-    window.EMSAuth.onChange(function () { renderPlan(); });
+    window.EMSAuth.onChange(function () { onProChange(); });
   }
 })();

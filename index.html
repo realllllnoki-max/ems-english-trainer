@@ -645,6 +645,13 @@
   .auth-msg.err{color:var(--red-dark)}
   .auth-msg.ok{color:var(--green-dark)}
   .auth-acct-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:.9rem;color:var(--ink-soft);word-break:break-all}
+  /* ===== Scenario card free/lock flags ===== */
+  .card-s .lockflag{position:absolute;top:8px;left:8px;z-index:2;font-size:.6rem;font-weight:900;letter-spacing:.05em;padding:3px 7px;border-radius:6px}
+  .card-s .lockflag.free{background:var(--green);color:#fff;box-shadow:0 2px 0 var(--green-dark)}
+  .card-s .lockflag.locked{background:rgba(60,60,60,.07);color:var(--hare)}
+  .card-s.is-locked{opacity:.62}
+  .card-s.is-locked:hover{opacity:.82}
+  .card-s.is-free{border-color:var(--green);box-shadow:0 3px 0 var(--green)}
   .plan-badge{font-size:.8rem;font-weight:900;padding:8px 12px;border-radius:var(--r-md);margin-bottom:14px;text-align:center}
   .plan-badge.pro{background:var(--green-soft);color:var(--green-dark)}
   .plan-badge.free{background:var(--bg-soft);color:var(--ink-soft)}
