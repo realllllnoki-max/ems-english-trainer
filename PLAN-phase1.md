@@ -198,12 +198,14 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - [ ] Edge Function `create-portal-session`
 - [ ] メニューに「プラン管理（解約・カード変更）」ボタン
 
-### Step 9. PWA化（ホーム画面に追加できるアプリ風に）
-- [ ] `manifest.json` 追加（アプリ名・アイコン・テーマ色・`display:standalone`）
-- [ ] Service Worker 追加（オフラインキャッシュ。`index.html`/`ems-app.js`/`ems-data.js` を事前キャッシュ）
-- [ ] アイコン画像（既存のSVGロゴ流用で各サイズ生成）
-- [ ] 「ホーム画面に追加」案内（iOS Safari は手動追加なので軽い導線を出す）
-- [ ] HTTPS配信であること（GitHub Pages / Cloudflare Pages とも標準対応）
+### Step 9. PWA化（ホーム画面に追加できるアプリ風に）✅ 完了
+- [x] `manifest.json` 追加（アプリ名・アイコン3種・テーマ色・`display:standalone`・相対パス）
+- [x] Service Worker（`sw.js`）追加 — 同一オリジン資産をキャッシュ（HTML=network-first / 資産=stale-while-revalidate、CDN/Supabaseは素通し）
+- [x] アイコン生成（既存ロゴをChromiumでPNG化）: `icon-192/512`（any）・`icon-maskable-512`・`apple-touch-icon-180`
+- [x] 「ホーム画面に追加」案内（`ems-pwa.js`）: Android/ChromeはInstallボタン、iOS Safariは手動手順を一度だけ表示
+- [x] iOS/Android用メタタグ（apple-mobile-web-app-capable 等）を追加
+- [x] ブラウザ検証: manifest解析・SW登録・アイコン200 を確認
+- 配信HTTPSは GitHub Pages / Cloudflare Pages とも標準対応（公開時に有効化）
 - ※ App Store審査・Apple Developer登録は不要。追加固定費¥0。
 
 ### Step 10. デプロイ

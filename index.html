@@ -9,6 +9,12 @@
 <meta property="og:description" content="英語の救急問診を、声に出して練習。発音を自動判定するDuolingo風の学習アプリ。">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#ff4b4b">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="EMS English">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23ff4b4b'/%3E%3Crect x='28' y='44' width='44' height='12' rx='3' fill='%23fff'/%3E%3Crect x='44' y='28' width='12' height='44' rx='3' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -639,6 +645,17 @@
   .auth-msg.err{color:var(--red-dark)}
   .auth-msg.ok{color:var(--green-dark)}
   .auth-acct-row{display:flex;align-items:center;gap:10px;margin-bottom:18px;font-size:.9rem;color:var(--ink-soft);word-break:break-all}
+  /* ===== PWA add-to-home hint ===== */
+  .pwa-hint{
+    position:fixed;left:12px;right:12px;bottom:84px;z-index:150;max-width:560px;margin:0 auto;
+    background:#fff;border:2px solid var(--line);border-radius:var(--r-lg);box-shadow:0 8px 30px rgba(0,0,0,.16);
+    padding:11px 12px;display:none;align-items:center;gap:10px;
+  }
+  .pwa-hint.on{display:flex}
+  .pwa-hint .ic{font-size:1.5rem;flex:0 0 auto}
+  .pwa-hint .tx{flex:1;font-size:.8rem;color:var(--ink);font-weight:700;line-height:1.45}
+  .pwa-hint .tx b{color:var(--red-dark)}
+  .pwa-hint .x{background:none;border:none;color:var(--hare);font-size:1.3rem;line-height:1;padding:4px 6px;flex:0 0 auto}
 </style>
 </head>
 <body>
@@ -726,9 +743,18 @@
   </div>
 </div>
 
+<!-- ===== PWA: ホーム画面に追加の案内 ===== -->
+<div class="pwa-hint" id="pwaHint">
+  <span class="ic">📲</span>
+  <div class="tx" id="pwaHintTx"></div>
+  <button class="b3 b3-blue b3-md" id="pwaInstall" type="button" style="display:none">追加</button>
+  <button class="x" id="pwaHintX" type="button" aria-label="閉じる">×</button>
+</div>
+
 <script src="ems-data.js"></script>
 <script src="ems-app.js"></script>
 <script src="ems-auth.js"></script>
 <script src="ems-sync.js"></script>
+<script src="ems-pwa.js"></script>
 </body>
 </html>
