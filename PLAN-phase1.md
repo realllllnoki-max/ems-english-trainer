@@ -223,17 +223,17 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - 配信HTTPSは GitHub Pages / Cloudflare Pages とも標準対応（公開時に有効化）
 - ※ App Store審査・Apple Developer登録は不要。追加固定費¥0。
 
-### Step 10. デプロイ
-- [ ] フロント: GitHub Pages 継続、または Cloudflare Pages へ（どちらも無料・商用OK）
-- [ ] フロントの公開設定値（Supabase URL / anon key / Stripe publishable key）を埋め込み ※すべて公開して安全な値のみ
-- [ ] バックエンド: Supabase Edge Functions をデプロイ＋シークレット設定（service role / Stripe secret / webhook secret は Edge のみ）
-- [ ] 独自ドメイン設定（任意）
+### Step 10. デプロイ ✅ 完了
+- [x] フロント: **GitHub Pages で公開**（`https://realllllnoki-max.github.io/ems-english-trainer/`）
+- [x] フロントの公開設定値（Supabase URL / publishable key）を埋め込み
+- [x] バックエンド: Supabase Edge Functions デプロイ＋シークレット設定（service role / Stripe secret / webhook secret は Edge のみ）
+- [ ] 独自ドメイン設定（任意・後日）
 
 ### Step 11. 通し検証（テストモード）
-- [ ] サインアップ → 無料範囲が使える
-- [ ] 無料状態で Lv1の1問目は解ける／2問目で課金画面が出る
-- [ ] テストカード `4242...` で決済 → `is_pro=true` → 全レベル・全機能が解放
-- [ ] 解約 → `is_pro=false` → 再ロック
+- [x] サインアップ → 無料範囲が使える（公開URLで確認）
+- [x] 無料状態で Lv1の1問目は解ける／他はペイウォール（🔒/無料バッジ表示）
+- [x] **テストカード `4242...` で決済 → `is_pro=true` → 全解放**（DB確認: is_pro=true, stripe_customer_id, current_period_end）✅
+- [ ] 解約テスト（既定は「期間末解約」→ 期間末に `customer.subscription.deleted` で `is_pro=false`。即時ロックにはならない＝正しい挙動）
 - [ ] 機種変想定（別ブラウザでログイン）→ 進捗が復元される
 - [ ] スマホで「ホーム画面に追加」→ アプリ風に起動できる（PWA確認）
 
