@@ -353,8 +353,9 @@ function renderMenuBody(){
   renderProgress();
   if(activeMode==="test"){
     chipsBar.classList.add("hide");grid.classList.add("hide");mic.classList.add("hide");
-    lead.innerHTML=`<div class="test-intro"><h3>⚡ 実戦テストモード</h3><p>ランダムな5シナリオから1問ずつ、計5問に挑戦。判定をスキップせず、本番のように一気に解きます。</p><button class="b3 b3-white b3-lg" id="startTest" style="color:var(--blue-dark)">テストを始める（5問）</button></div>`;
+    lead.innerHTML=`<div class="test-intro"><h3>⚡ 実戦テストモード</h3><p>ランダムな5シナリオから1問ずつ、計5問に挑戦。判定をスキップせず、本番のように一気に解きます。</p><button class="b3 b3-white b3-lg" id="startTest" style="color:var(--blue-dark)">テストを始める（5問）</button></div>${srsCardHTML()}`;
     $("#startTest").onclick=()=>{FX.tap();startTest();};
+    const sb=$("#startSrs");if(sb)sb.onclick=()=>{FX.tap();startQuiz("__srs__");};
     return;
   }
   if(activeMode==="level"){
@@ -459,6 +460,52 @@ function markWeak(w){VWEAK[w.en]=true;saveVocabWeak();}
 function clearWeak(w){if(VWEAK[w.en]){delete VWEAK[w.en];saveVocabWeak();}}
 async function saveVocabProg(){try{await window.storage.set(VSTORE_KEY,JSON.stringify(VPROG));}catch(e){}}
 
+/* ===== 忘却曲線 復習（SRS: spaced repetition） ===== */
+const DAY_MS=86400000;
+const SRS_INTERVALS=[1,3,7,14,30];           // 日後：1→3→7→14→30
+const SRS_KEY="ems_vocab_srs_v1";
+let SRS={};                                   // { en: {stage:0..4, due:ms} }
+function startOfDay(ts){const d=new Date(ts);d.setHours(0,0,0,0);return d.getTime();}
+function todayStart(){return startOfDay(Date.now());}
+async function loadSrs(){try{const r=await window.storage.get(SRS_KEY);SRS=r&&r.value?JSON.parse(r.value):{};}catch(e){SRS={};}}
+async function saveSrs(){try{await window.storage.set(SRS_KEY,JSON.stringify(SRS));}catch(e){}}
+// まちがえた単語をスケジュールに追加（既にあれば触らない）
+function srsAdd(en){if(!SRS[en]){SRS[en]={stage:0,due:todayStart()+SRS_INTERVALS[0]*DAY_MS};saveSrs();}}
+// 復習で正解：次の間隔へ進む。最終段(30日)を超えたら卒業
+function srsAdvance(en){const e=SRS[en];if(!e)return;if(e.stage>=SRS_INTERVALS.length-1){delete SRS[en];}else{e.stage++;e.due=todayStart()+SRS_INTERVALS[e.stage]*DAY_MS;}saveSrs();}
+// 復習でまちがえた：1日目に戻す
+function srsReset(en){SRS[en]={stage:0,due:todayStart()+SRS_INTERVALS[0]*DAY_MS};saveSrs();}
+// 今日が期日（due<=今）の単語
+function srsDue(){const now=Date.now();return VOCAB.filter(v=>SRS[v.en]&&SRS[v.en].due<=now);}
+function srsStats(){
+  const now=Date.now();const byStage=[0,0,0,0,0];let due=0,nextDue=null;
+  Object.keys(SRS).forEach(en=>{const e=SRS[en];if(e.stage>=0&&e.stage<5)byStage[e.stage]++;if(e.due<=now)due++;else if(nextDue===null||e.due<nextDue)nextDue=e.due;});
+  return {due,byStage,nextDue,total:Object.keys(SRS).length};
+}
+function fmtMD(ts){const d=new Date(ts);return (d.getMonth()+1)+"/"+d.getDate();}
+function srsCardHTML(){
+  const st=srsStats();
+  const labels=["1日","3日","7日","14日","30日"];
+  const steps=labels.map((l,i)=>{const n=st.byStage[i];const cls=n>0?"srs-step done":"srs-step";return `<span class="${cls}">${l}${n>0?`<br>${n}語`:""}</span>`;}).join("");
+  let status,btn;
+  if(st.total===0){
+    status="まだ登録された単語はありません。単語クイズでまちがえると、ここに集まります。";
+    btn=`<button class="b3 b3-white b3-lg" id="startSrs" disabled>今日の復習はありません</button>`;
+  }else if(st.due>0){
+    status=`📌 今日の復習：<b>${st.due}語</b>　／　登録中：${st.total}語`;
+    btn=`<button class="b3 b3-white b3-lg" id="startSrs">今日の復習を始める（${st.due}語）</button>`;
+  }else{
+    status=`🎉 今日の復習は完了！${st.nextDue?`　次回は ${fmtMD(st.nextDue)} に`:""}　／　登録中：${st.total}語`;
+    btn=`<button class="b3 b3-white b3-lg" id="startSrs" disabled>今日の復習はありません</button>`;
+  }
+  return `<div class="srs-card">
+    <div class="srs-head"><span class="srs-ic">🧠</span><div><div class="srs-t">忘却曲線で復習</div><div class="srs-sub">まちがえた単語を 1→3→7→14→30日 の間隔で出題。正解で次の間隔へ、まちがえると1日目に戻ります。</div></div></div>
+    <div class="srs-steps">${steps}</div>
+    <div class="srs-status">${status}</div>
+    ${btn}
+  </div>`;
+}
+
 function renderVocabMenu(){
   const host=$("#grid");host.className="vcat-grid";host.id="grid";host.innerHTML="";
   const dirRow=document.createElement("div");dirRow.className="vmode-row";dirRow.style.gridColumn="1/-1";
@@ -474,8 +521,8 @@ function renderVocabMenu(){
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function startQuiz(cat){
   vCat=cat;let pool;
-  if(cat==="__all__")pool=[...VOCAB];else if(cat==="__weak__")pool=weakWords();else pool=VOCAB.filter(v=>v.cat===cat);
-  const limit=cat==="__weak__"?Math.min(20,pool.length):10;
+  if(cat==="__all__")pool=[...VOCAB];else if(cat==="__weak__")pool=weakWords();else if(cat==="__srs__")pool=srsDue();else pool=VOCAB.filter(v=>v.cat===cat);
+  const limit=(cat==="__weak__"||cat==="__srs__")?Math.min(20,pool.length):10;
   vQueue=shuffle([...pool]).slice(0,limit);vIdx=0;vCorrect=0;vWrong=[];sessionXp=0;
   $("#menu").classList.add("hide");$("#quiz").classList.remove("hide");window.scrollTo(0,0);renderQuestion();
 }
@@ -513,8 +560,8 @@ function answer(btn,chosen,correct){
   const isRight=chosen.en===correct.en;
   const correctLabel=vDir==="en2jp"?correct.jp:correct.en;
   document.querySelectorAll(".qz-opt").forEach(el=>{const txt=el.textContent;if(txt===correctLabel)el.classList.add("correct");else if(el===btn)el.classList.add("wrong");else el.classList.add("dim");el.onclick=null;});
-  if(isRight){vCorrect++;clearWeak(correct);addXp(5);FX.correct();FX.burst("+5 XP","#46a302");}
-  else{vWrong.push(correct);markWeak(correct);FX.wrong();}
+  if(isRight){vCorrect++;clearWeak(correct);if(vCat==="__srs__")srsAdvance(correct.en);addXp(5);FX.correct();FX.burst("+5 XP","#46a302");}
+  else{vWrong.push(correct);if(vCat==="__srs__")srsReset(correct.en);else{markWeak(correct);srsAdd(correct.en);}FX.wrong();}
   if(vDir==="jp2en")speak(correct.en,0.9);
   $(".qz-score").textContent="✅ "+vCorrect;
   $("#qzFeedback").innerHTML=`<button class="b3 b3-green b3-lg" id="qzNext">${isRight?"正解！":"次へ"} ${vIdx+1<vQueue.length?I.go:"🏁"}</button>`;
@@ -523,14 +570,14 @@ function answer(btn,chosen,correct){
 }
 function finishQuiz(){
   $("#qzFill").style.width="100%";$("#qzMeta").innerHTML="";
-  if(vCat!=="__weak__"){VPROG[vCat]=Math.max(VPROG[vCat]||0,vCorrect);saveVocabProg();}
+  if(vCat!=="__weak__"&&vCat!=="__srs__"){VPROG[vCat]=Math.max(VPROG[vCat]||0,vCorrect);saveVocabProg();}
   STATS.quizCount=(STATS.quizCount||0)+1;
   const pct=Math.round(vCorrect/vQueue.length*100);
   if(pct>=70){addXp(10);}
   const act=recordActivity();
   const grade=pct>=90?"🏆 完璧！":pct>=70?"🥈 good!":pct>=50?"🥉 その調子":"📖 復習しよう";
   if(pct>=70){FX.fanfare();FX.confetti({big:pct>=90});}
-  const catName=vCat==="__all__"?"全カテゴリ":vCat==="__weak__"?"苦手単語の復習":vCat;
+  const catName=vCat==="__all__"?"全カテゴリ":vCat==="__weak__"?"苦手単語の復習":vCat==="__srs__"?"忘却曲線の復習":vCat;
   const wrongHTML=vWrong.length?`<div class="wrong-list"><div class="wh">📝 まちがえた単語（${vWrong.length}）</div>${vWrong.map(w=>`<div class="wr"><span class="we">${w.en}</span><span class="wj">${w.jp}</span></div>`).join("")}</div>`:`<p class="fm" style="color:var(--green-dark);font-weight:900;margin-top:14px">全問正解！すばらしい 🎉</p>`;
   $("#qzStage").innerHTML=`
     <div class="fin"><div class="ficon">${pct>=90?"🏆":"📊"}</div><h3>${catName} クイズ結果</h3><p class="fm">${grade}</p>
@@ -538,7 +585,8 @@ function finishQuiz(){
       <div class="tiles"><div class="tile t-g"><small>正解</small><b>${vCorrect}</b></div><div class="tile t-b"><small>問題</small><b>${vQueue.length}</b></div><div class="tile t-a"><small>正答率</small><b>${pct}%</b></div></div>
       ${wrongHTML}
       ${vCat==="__weak__"?`<p class="fm" style="margin-top:12px;font-weight:900;color:${weakWords().length?"var(--amber-dark)":"var(--green-dark)"}">${weakWords().length?`残りの苦手単語：${weakWords().length}語`:"苦手単語をすべて克服しました！🎉"}</p>`:""}
-      <div class="fin-acts">${vCat==="__weak__"?(weakWords().length?`<button class="b3 b3-white b3-md" id="qzAgain">続けて復習</button>`:""):`<button class="b3 b3-white b3-md" id="qzAgain">もう一度</button>`}<button class="b3 b3-green b3-md" id="qzHome">メニューへ</button></div>
+      ${vCat==="__srs__"?`<p class="fm" style="margin-top:12px;font-weight:900;color:${srsDue().length?"var(--amber-dark)":"var(--green-dark)"}">${srsDue().length?`今日の復習はあと ${srsDue().length}語`:"今日の復習をすべて終えました！🎉"}</p>`:""}
+      <div class="fin-acts">${vCat==="__weak__"?(weakWords().length?`<button class="b3 b3-white b3-md" id="qzAgain">続けて復習</button>`:""):vCat==="__srs__"?(srsDue().length?`<button class="b3 b3-white b3-md" id="qzAgain">続けて復習</button>`:""):`<button class="b3 b3-white b3-md" id="qzAgain">もう一度</button>`}<button class="b3 b3-green b3-md" id="qzHome">メニューへ</button></div>
     </div>`;
   const ag=$("#qzAgain");if(ag)ag.onclick=()=>{FX.tap();startQuiz(vCat);};
   $("#qzHome").onclick=()=>{FX.tap();$("#quiz").classList.add("hide");$("#menu").classList.remove("hide");renderMenuBody();};
@@ -546,7 +594,7 @@ function finishQuiz(){
 
 /* boot */
 (async()=>{
-  await loadProgress();await loadVocabProg();await loadStats();renderModes();renderMenuBody();
+  await loadProgress();await loadVocabProg();await loadSrs();await loadStats();renderModes();renderMenuBody();
 })();
 
 /* ================= SPEECH ================= */
