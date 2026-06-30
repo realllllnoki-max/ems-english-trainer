@@ -9,10 +9,17 @@
 <meta property="og:description" content="英語の救急問診を、声に出して練習。発音を自動判定するDuolingo風の学習アプリ。">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#ff4b4b">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="EMS English">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23ff4b4b'/%3E%3Crect x='28' y='44' width='44' height='12' rx='3' fill='%23fff'/%3E%3Crect x='44' y='28' width='12' height='44' rx='3' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --green:#58cc02; --green-dark:#46a302; --green-soft:#d7ffb8;
@@ -629,6 +636,69 @@
     .stp .w{display:none}
     .mode .ml{font-size:.64rem}
   }
+  /* ===== Account button (header) ===== */
+  .acct-btn{
+    background:var(--bg-soft);border:2px solid var(--line);color:var(--ink-soft);
+    font-weight:800;font-size:.8rem;padding:7px 12px;min-height:40px;border-radius:var(--r-pill);
+    display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 0 var(--line);
+  }
+  .acct-btn:active{transform:translateY(2px);box-shadow:none}
+  .acct-btn .av{
+    width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;
+    font-weight:900;font-size:.72rem;display:inline-flex;align-items:center;justify-content:center;
+  }
+  /* ===== Auth modal ===== */
+  .auth-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center;padding:16px}
+  .auth-ov.on{display:flex}
+  .auth-card{background:#fff;border-radius:var(--r-lg);max-width:380px;width:100%;padding:22px 22px 24px;box-shadow:0 14px 44px rgba(0,0,0,.22);position:relative}
+  .auth-close{position:absolute;top:12px;right:14px;background:none;border:none;font-size:1.5rem;color:var(--hare);line-height:1;padding:4px;min-height:auto}
+  .auth-card h3{font-size:1.3rem;font-weight:900;color:var(--ink);margin-bottom:3px}
+  .auth-card .sub{font-size:.84rem;color:var(--ink-soft);margin-bottom:16px}
+  .auth-tabs{display:flex;gap:8px;margin-bottom:16px}
+  .auth-tab{flex:1;padding:10px;border:2px solid var(--line);background:#fff;border-radius:var(--r-md);font-weight:800;font-size:.9rem;color:var(--ink-soft)}
+  .auth-tab.on{background:var(--blue-soft);border-color:var(--blue);color:var(--blue-dark)}
+  .auth-field{width:100%;padding:13px 14px;border:2px solid var(--line);border-radius:var(--r-md);font-size:1rem;font-family:inherit;margin-bottom:10px;color:var(--ink)}
+  .auth-field:focus{outline:none;border-color:var(--blue)}
+  .auth-msg{font-size:.82rem;font-weight:800;margin:2px 2px 12px;min-height:1.1em;line-height:1.4}
+  .auth-msg.err{color:var(--red-dark)}
+  .auth-msg.ok{color:var(--green-dark)}
+  .auth-acct-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:.9rem;color:var(--ink-soft);word-break:break-all}
+  /* ===== Scenario card free/lock flags ===== */
+  .card-s .lockflag{position:absolute;top:8px;left:8px;z-index:2;font-size:.6rem;font-weight:900;letter-spacing:.05em;padding:3px 7px;border-radius:6px}
+  .card-s .lockflag.free{background:var(--green);color:#fff;box-shadow:0 2px 0 var(--green-dark)}
+  .card-s .lockflag.locked{background:rgba(60,60,60,.07);color:var(--hare)}
+  .card-s.is-locked{opacity:.62}
+  .card-s.is-locked:hover{opacity:.82}
+  .card-s.is-free{border-color:var(--green);box-shadow:0 3px 0 var(--green)}
+  .plan-badge{font-size:.8rem;font-weight:900;padding:8px 12px;border-radius:var(--r-md);margin-bottom:14px;text-align:center}
+  .plan-badge.pro{background:var(--green-soft);color:var(--green-dark)}
+  .plan-badge.free{background:var(--bg-soft);color:var(--ink-soft)}
+  /* ===== Paywall ===== */
+  .pay-feats{list-style:none;margin:4px 0 14px;padding:0}
+  .pay-feats li{position:relative;padding:6px 0 6px 26px;font-size:.88rem;font-weight:700;color:var(--ink);line-height:1.4}
+  .pay-feats li::before{content:"✓";position:absolute;left:0;top:6px;color:var(--green-dark);font-weight:900}
+  .pay-price{background:var(--amber-soft);color:var(--ink);font-weight:800;font-size:.92rem;text-align:center;padding:10px;border-radius:var(--r-md);margin-bottom:12px}
+  .pay-price b{color:var(--red-dark);font-size:1.05rem}
+  /* ===== Toast ===== */
+  .ems-toast{
+    position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);z-index:300;
+    background:var(--ink);color:#fff;font-weight:800;font-size:.86rem;padding:12px 18px;border-radius:var(--r-pill);
+    box-shadow:0 8px 30px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;max-width:90vw;text-align:center;
+  }
+  .ems-toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  .legal-links{text-align:center;font-size:.74rem;color:var(--hare);margin-top:10px;line-height:1.9}
+  .legal-links a{color:var(--hare);text-decoration:underline}
+  /* ===== PWA add-to-home hint ===== */
+  .pwa-hint{
+    position:fixed;left:12px;right:12px;bottom:84px;z-index:150;max-width:560px;margin:0 auto;
+    background:#fff;border:2px solid var(--line);border-radius:var(--r-lg);box-shadow:0 8px 30px rgba(0,0,0,.16);
+    padding:11px 12px;display:none;align-items:center;gap:10px;
+  }
+  .pwa-hint.on{display:flex}
+  .pwa-hint .ic{font-size:1.5rem;flex:0 0 auto}
+  .pwa-hint .tx{flex:1;font-size:.8rem;color:var(--ink);font-weight:700;line-height:1.45}
+  .pwa-hint .tx b{color:var(--red-dark)}
+  .pwa-hint .x{background:none;border:none;color:var(--hare);font-size:1.3rem;line-height:1;padding:4px 6px;flex:0 0 auto}
 </style>
 </head>
 <body>
@@ -642,6 +712,7 @@
         <p>Interview Trainer</p>
       </div>
       <div class="count-pill" id="countPill"></div>
+      <button class="acct-btn" id="emsAccount" type="button">ログイン</button>
     </div>
   </header>
   <div class="wrap">
@@ -657,6 +728,7 @@
       <div><b>マイクで発音を自動判定します（Chrome推奨）。</b><br>マイクなしでも「スキップ」でテンポよく進められます。</div>
     </div>
     <p class="disclaimer">⚠️ 本アプリは英語学習を目的とした教材です。実際の救急・医療判断には使用しないでください。内容の正確性・完全性を保証するものではありません。</p>
+    <p class="legal-links"><a href="tokushoho.html">特定商取引法に基づく表記</a>・<a href="terms.html">利用規約</a>・<a href="privacy.html">プライバシーポリシー</a></p>
   </div>
   <nav class="bottom-nav" id="bottomNav"></nav>
 </section>
@@ -686,7 +758,73 @@
   </div>
 </section>
 
+<!-- ===== Auth modal ===== -->
+<div class="auth-ov" id="authOv">
+  <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <button class="auth-close" id="authClose" aria-label="閉じる">×</button>
+
+    <!-- ログイン / 新規登録 -->
+    <div id="authForms">
+      <h3 id="authTitle">おかえりなさい</h3>
+      <p class="sub" id="authSub">続きを記録するにはログインしてください</p>
+      <div class="auth-tabs">
+        <button class="auth-tab on" id="tabLogin" type="button">ログイン</button>
+        <button class="auth-tab" id="tabSignup" type="button">新規登録</button>
+      </div>
+      <input class="auth-field" id="authEmail" type="email" autocomplete="email" inputmode="email" placeholder="メールアドレス">
+      <input class="auth-field" id="authPass" type="password" autocomplete="current-password" placeholder="パスワード（6文字以上）">
+      <div class="auth-msg" id="authMsg"></div>
+      <button class="b3 b3-green b3-lg" id="authSubmit" type="button">ログイン</button>
+    </div>
+
+    <!-- ログイン中 -->
+    <div id="authAccount" style="display:none">
+      <h3>アカウント</h3>
+      <p class="sub">ログイン中です</p>
+      <div class="auth-acct-row"><span class="av" id="acctAv">U</span><span id="acctEmail"></span></div>
+      <div class="plan-badge" id="planBadge"></div>
+      <button class="b3 b3-green b3-lg" id="acctUpgrade" type="button" style="display:none;margin-bottom:10px">Proにアップグレード（税込1200円/月）</button>
+      <button class="b3 b3-white b3-lg" id="acctManage" type="button" style="display:none;margin-bottom:10px">プラン管理（解約・カード変更）</button>
+      <button class="b3 b3-white b3-md" id="authSignout" type="button">ログアウト</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Paywall modal ===== -->
+<div class="auth-ov" id="payOv">
+  <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="payTitle">
+    <button class="auth-close" id="payClose" aria-label="閉じる">×</button>
+    <h3 id="payTitle">Proで全部解放 🚑</h3>
+    <p class="sub">無料で使えるのは「レベル1の最初の1問」だけ。Proにすると全機能が使えます。</p>
+    <ul class="pay-feats">
+      <li>全レベル・全シナリオ（Lv1〜10）</li>
+      <li>救急英単語クイズ（全カテゴリ）</li>
+      <li>テストモード・苦手復習</li>
+      <li>記録・ストリーク・バッジをクラウド同期（機種変でも消えない）</li>
+    </ul>
+    <div class="pay-price"><b>税込1200円</b> / 月　いつでも解約OK</div>
+    <div class="auth-msg" id="payMsg"></div>
+    <button class="b3 b3-green b3-lg" id="payGo" type="button">Proにする（税込1200円/月）</button>
+    <button class="b3 b3-white b3-md" id="payFree" type="button" style="width:100%;margin-top:10px">まずは無料の1問を試す</button>
+  </div>
+</div>
+
+<!-- ===== Toast ===== -->
+<div class="ems-toast" id="emsToast"></div>
+
+<!-- ===== PWA: ホーム画面に追加の案内 ===== -->
+<div class="pwa-hint" id="pwaHint">
+  <span class="ic">📲</span>
+  <div class="tx" id="pwaHintTx"></div>
+  <button class="b3 b3-blue b3-md" id="pwaInstall" type="button" style="display:none">追加</button>
+  <button class="x" id="pwaHintX" type="button" aria-label="閉じる">×</button>
+</div>
+
 <script src="ems-data.js"></script>
 <script src="ems-app.js"></script>
+<script src="ems-auth.js"></script>
+<script src="ems-sync.js"></script>
+<script src="ems-paywall.js"></script>
+<script src="ems-pwa.js"></script>
 </body>
 </html>
