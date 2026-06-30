@@ -605,6 +605,24 @@
     background:var(--blue-soft);color:var(--blue-dark);border-radius:var(--r-pill);
     font-weight:900;font-size:.78rem;padding:5px 12px;white-space:nowrap;
   }
+  .srs-card{
+    margin-top:14px;background:linear-gradient(135deg,#ce82ff,#a64ee0);color:#fff;
+    border-radius:var(--r-lg);padding:18px 16px;box-shadow:0 4px 0 #8a3ec4;
+  }
+  .srs-head{display:flex;align-items:flex-start;gap:11px}
+  .srs-head .srs-ic{font-size:2rem;line-height:1;flex:0 0 auto}
+  .srs-t{font-weight:900;font-size:1.15rem;font-family:"Noto Sans JP",sans-serif}
+  .srs-sub{font-size:.8rem;opacity:.95;margin-top:3px;line-height:1.5;font-family:"Noto Sans JP",sans-serif}
+  .srs-steps{display:flex;gap:6px;margin:14px 0 4px}
+  .srs-step{
+    flex:1;text-align:center;font-weight:900;font-size:.72rem;padding:7px 2px;border-radius:9px;
+    background:rgba(255,255,255,.18);position:relative;font-family:"Noto Sans JP",sans-serif;
+  }
+  .srs-step.done{background:rgba(255,255,255,.92);color:var(--purple)}
+  .srs-step.due{background:#ffc800;color:#5a3500;box-shadow:0 0 0 2px rgba(255,255,255,.55)}
+  .srs-status{font-size:.82rem;font-weight:800;margin:12px 0 10px;opacity:.97;font-family:"Noto Sans JP",sans-serif}
+  .srs-card .b3-lg{color:var(--purple)}
+  .srs-card .b3-lg:disabled{opacity:.55}
   @media(max-width:430px){
     .grid{grid-template-columns:1fr 1fr}
     .q-en{font-size:1.18rem}
