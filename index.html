@@ -679,6 +679,24 @@
   .pay-feats li::before{content:"✓";position:absolute;left:0;top:6px;color:var(--green-dark);font-weight:900}
   .pay-price{background:var(--amber-soft);color:var(--ink);font-weight:800;font-size:.92rem;text-align:center;padding:10px;border-radius:var(--r-md);margin-bottom:12px}
   .pay-price b{color:var(--red-dark);font-size:1.05rem}
+  /* ===== プラン選択 ===== */
+  .plan-opts{display:flex;flex-direction:column;gap:9px;margin:4px 0 14px}
+  .plan-opt{position:relative;display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+    border:2px solid var(--line);background:#fff;border-radius:var(--r-md);padding:12px 14px;
+    box-shadow:0 2px 0 var(--line);transition:.12s}
+  .plan-opt:hover{border-color:var(--blue)}
+  .plan-opt.on{border-color:var(--green);background:var(--green-soft);box-shadow:0 2px 0 var(--green-dark)}
+  .plan-opt .po-radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--line-dark);flex:0 0 auto;display:grid;place-items:center}
+  .plan-opt.on .po-radio{border-color:var(--green-dark);background:var(--green-dark)}
+  .plan-opt.on .po-radio::after{content:"✓";color:#fff;font-size:.72rem;font-weight:900}
+  .plan-opt .po-main{flex:1;min-width:0}
+  .plan-opt .po-l{display:block;font-weight:900;font-size:.98rem;color:var(--ink)}
+  .plan-opt .po-per{display:block;font-size:.76rem;font-weight:800;color:var(--ink-soft);margin-top:1px}
+  .plan-opt .po-p{font-weight:900;font-size:1.05rem;color:var(--ink);white-space:nowrap}
+  .plan-opt .po-p small{font-size:.7rem;font-weight:800;color:var(--ink-soft)}
+  .plan-opt .po-badge{position:absolute;top:-9px;right:12px;background:var(--red);color:#fff;
+    font-size:.66rem;font-weight:900;padding:2px 8px;border-radius:var(--r-pill);letter-spacing:.02em}
+  .plan-opt .po-badge.best{background:var(--green-dark)}
   /* ===== Toast ===== */
   .ems-toast{
     position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);z-index:300;
@@ -783,7 +801,7 @@
       <p class="sub">ログイン中です</p>
       <div class="auth-acct-row"><span class="av" id="acctAv">U</span><span id="acctEmail"></span></div>
       <div class="plan-badge" id="planBadge"></div>
-      <button class="b3 b3-green b3-lg" id="acctUpgrade" type="button" style="display:none;margin-bottom:10px">Proにアップグレード（税込1200円/月）</button>
+      <button class="b3 b3-green b3-lg" id="acctUpgrade" type="button" style="display:none;margin-bottom:10px">Proにアップグレード（月額1,200円〜）</button>
       <button class="b3 b3-white b3-lg" id="acctManage" type="button" style="display:none;margin-bottom:10px">プラン管理（解約・カード変更）</button>
       <button class="b3 b3-white b3-md" id="authSignout" type="button">ログアウト</button>
     </div>
@@ -802,9 +820,27 @@
       <li>テストモード・苦手復習</li>
       <li>記録・ストリーク・バッジをクラウド同期（機種変でも消えない）</li>
     </ul>
-    <div class="pay-price"><b>税込1200円</b> / 月　いつでも解約OK</div>
+    <div class="plan-opts" id="planOpts">
+      <button class="plan-opt" data-plan="monthly" type="button">
+        <span class="po-radio"></span>
+        <span class="po-main"><span class="po-l">月額プラン</span><span class="po-per">1,200円/月・いつでも解約OK</span></span>
+        <span class="po-p">1,200円<small>/月</small></span>
+      </button>
+      <button class="plan-opt" data-plan="6month" type="button">
+        <span class="po-badge">17%お得</span>
+        <span class="po-radio"></span>
+        <span class="po-main"><span class="po-l">6ヶ月プラン</span><span class="po-per">1,000円/月 相当</span></span>
+        <span class="po-p">6,000円<small>/6ヶ月</small></span>
+      </button>
+      <button class="plan-opt on" data-plan="year" type="button">
+        <span class="po-badge best">32%お得</span>
+        <span class="po-radio"></span>
+        <span class="po-main"><span class="po-l">1年プラン</span><span class="po-per">約817円/月 相当・いちばんお得</span></span>
+        <span class="po-p">9,800円<small>/年</small></span>
+      </button>
+    </div>
     <div class="auth-msg" id="payMsg"></div>
-    <button class="b3 b3-green b3-lg" id="payGo" type="button">Proにする（税込1200円/月）</button>
+    <button class="b3 b3-green b3-lg" id="payGo" type="button">このプランで続ける</button>
     <button class="b3 b3-white b3-md" id="payFree" type="button" style="width:100%;margin-top:10px">まずは無料の1問を試す</button>
   </div>
 </div>

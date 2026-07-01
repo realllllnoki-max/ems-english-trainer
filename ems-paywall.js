@@ -60,6 +60,22 @@
   function closePay() { var ov = $("payOv"); if (ov) ov.classList.remove("on"); }
   function setPayMsg(t, cls) { var m = $("payMsg"); if (m) { m.textContent = t || ""; m.className = "auth-msg" + (cls ? " " + cls : ""); } }
 
+  /* ---------- プラン選択 ---------- */
+  var selectedPlan = "year"; // 既定は最安の1年プラン（HTML側の .on と一致）
+  function wirePlanOpts() {
+    var box = $("planOpts"); if (!box) return;
+    var opts = box.querySelectorAll(".plan-opt");
+    for (var i = 0; i < opts.length; i++) {
+      opts[i].addEventListener("click", function () {
+        for (var j = 0; j < opts.length; j++) opts[j].classList.remove("on");
+        this.classList.add("on");
+        selectedPlan = this.getAttribute("data-plan") || "year";
+      });
+    }
+    var on = box.querySelector(".plan-opt.on");
+    if (on) selectedPlan = on.getAttribute("data-plan") || selectedPlan;
+  }
+
   function baseUrl() { return location.origin + location.pathname; }
 
   async function startCheckout() {
@@ -71,7 +87,7 @@
       var session = sres && sres.data && sres.data.session;
       if (!session) { closePay(); a.open(); return; } // 未ログインならログインへ
       var r = await a.client.functions.invoke("create-checkout-session", {
-        body: { returnUrl: baseUrl() },
+        body: { returnUrl: baseUrl(), plan: selectedPlan },
         headers: { Authorization: "Bearer " + session.access_token }
       });
       if (r.error) throw r.error;
@@ -162,6 +178,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     var pc = $("payClose"); if (pc) pc.onclick = closePay;
     var ov = $("payOv"); if (ov) ov.addEventListener("click", function (e) { if (e.target === ov) closePay(); });
+    wirePlanOpts();
     var go = $("payGo"); if (go) go.onclick = startCheckout;
     var free = $("payFree"); if (free) free.onclick = function () {
       closePay();
