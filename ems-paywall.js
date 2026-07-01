@@ -1,8 +1,9 @@
 /* ================= EMS PAYWALL =================
  * 課金ロック/解放のフロント側。
- *  - 無料は「レベル1の最初の1問」だけ。それ以外は Pro 限定。
+ *  - ゲスト状態で「レベル1の最初の1問」だけ無料プレイ可能。
+ *  - 2問目以降・他レベル・全機能は Pro 限定（ログイン必須）。
  *  - startScene / startQuiz / startTest をラップして非Proをペイウォールへ。
- *  - Checkout / カスタマーポータルは Edge Function を呼ぶ。
+ *  - 「このプランで続ける」をクリック時のみログイン & Checkout。
  *  - 決済からの戻り（?checkout=success）を検知して is_pro を再取得。
  * 依存: ems-app.js（startScene等, SCENES）, ems-auth.js（window.EMSAuth, window.EMS_PRO）
  * ============================================== */

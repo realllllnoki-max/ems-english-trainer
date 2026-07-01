@@ -1,6 +1,6 @@
 /* ================= EMS AUTH (Supabase) =================
  * メールログイン（メール＋パスワード）。Google は後から追加予定。
- * 無料範囲はログインなしでも使える。ログインは任意。
+ * ゲストでは無料の1問をプレイ可能。有料化するときだけログイン。
  * 公開して安全な値のみ（URL / publishable key）をここに置く。
  * service role などのサーバー専用キーは絶対に置かない。
  * ====================================================== */
@@ -93,12 +93,12 @@
   function renderHeader() {
     if (!btn) return;
     if (EMSAuth.user) {
+      btn.style.display = "flex";
       var em = EMSAuth.user.email || "";
       btn.innerHTML = '<span class="av">' + esc(initial(em)) + "</span>";
       btn.setAttribute("aria-label", "アカウント: " + em);
     } else {
-      btn.textContent = "ログイン";
-      btn.setAttribute("aria-label", "ログイン");
+      btn.style.display = "none";
     }
   }
 
