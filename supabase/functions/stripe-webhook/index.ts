@@ -1,15 +1,23 @@
 // stripe-webhook
 // Stripe からの Webhook を受け、課金状態(profiles.is_pro)を更新する「有料判定の正本」。
 // verify_jwt = false（StripeはSupabase JWTを持たない）。代わりに Stripe 署名で検証する。
-// 必要シークレット: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_ID
-// 相乗り対策: STRIPE_PRICE_ID に一致するサブスクのみ処理し、既存事業の決済には触れない。
+// 必要シークレット: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+//   STRIPE_PRICE_ID(月額), STRIPE_PRICE_ID_6M(6ヶ月), STRIPE_PRICE_ID_1Y(1年)
+// 相乗り対策: 自社の価格ID（月/6ヶ月/1年）に一致するサブスクのみ処理し、既存事業の決済には触れない。
 import Stripe from "npm:stripe@16";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 Deno.serve(async (req) => {
   const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!);
   const whSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
-  const ourPrice = Deno.env.get("STRIPE_PRICE_ID")!;
+  // 自社の価格ID一式（月/6ヶ月/1年）。未設定は除外。
+  const ourPrices = new Set(
+    [
+      Deno.env.get("STRIPE_PRICE_ID"),
+      Deno.env.get("STRIPE_PRICE_ID_6M"),
+      Deno.env.get("STRIPE_PRICE_ID_1Y"),
+    ].filter(Boolean) as string[],
+  );
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -26,7 +34,7 @@ Deno.serve(async (req) => {
   }
 
   const subHasOurPrice = (sub: Stripe.Subscription) =>
-    (sub.items?.data || []).some((it) => it.price?.id === ourPrice);
+    (sub.items?.data || []).some((it) => !!it.price?.id && ourPrices.has(it.price.id));
 
   const setPro = async (customerId: string, isPro: boolean, periodEnd?: number | null) => {
     const upd: Record<string, unknown> = { is_pro: isPro };
