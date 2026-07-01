@@ -1,8 +1,10 @@
 // create-checkout-session
-// ログイン済みユーザー向けに Stripe Checkout(サブスク/税込1200円) のセッションを作り URL を返す。
+// ログイン済みユーザー向けに Stripe Checkout(サブスク) のセッションを作り URL を返す。
+// プラン: monthly(税込1,200円/月) / 6month(6,000円/6ヶ月) / year(9,800円/年)
+//   body.plan で切り替え。未指定・不正な場合は monthly にフォールバック。
 // verify_jwt = false（ゲートウェイ任せにせず、関数内で getUser によりトークン検証する独自認証）。
 //   ※ ブラウザからの呼び出しで Authorization が確実に渡るよう、verify_jwt は無効化。
-// 必要シークレット: STRIPE_SECRET_KEY, STRIPE_PRICE_ID
+// 必要シークレット: STRIPE_SECRET_KEY, STRIPE_PRICE_ID(月額), STRIPE_PRICE_ID_6M(6ヶ月), STRIPE_PRICE_ID_1Y(1年)
 //   （SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY は Edge 既定で利用可能）
 import Stripe from "npm:stripe@16";
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -26,7 +28,6 @@ Deno.serve(async (req) => {
 
   try {
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!);
-    const priceId = Deno.env.get("STRIPE_PRICE_ID")!;
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -40,6 +41,16 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({} as any));
     const origin = (body.returnUrl as string) || req.headers.get("origin") || "";
+
+    // プラン → 価格ID（未指定・未設定は monthly にフォールバック）
+    const monthlyPrice = Deno.env.get("STRIPE_PRICE_ID")!;
+    const priceByPlan: Record<string, string | undefined> = {
+      monthly: monthlyPrice,
+      "6month": Deno.env.get("STRIPE_PRICE_ID_6M"),
+      year: Deno.env.get("STRIPE_PRICE_ID_1Y"),
+    };
+    const plan = (body.plan as string) || "monthly";
+    const priceId = priceByPlan[plan] || monthlyPrice;
 
     // Stripe顧客を取得 or 作成して profiles に紐付け
     const { data: prof } = await admin
@@ -61,7 +72,7 @@ Deno.serve(async (req) => {
       success_url: `${origin}?checkout=success`,
       cancel_url: `${origin}?checkout=cancel`,
       allow_promotion_codes: true,
-      subscription_data: { metadata: { supabase_user_id: user.id } },
+      subscription_data: { metadata: { supabase_user_id: user.id, plan } },
       client_reference_id: user.id,
     });
 

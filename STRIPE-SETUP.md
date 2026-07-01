@@ -16,18 +16,23 @@
 2. 右上の **「テスト環境」トグルをON**（オレンジ色の「テストモード」表示になればOK）
    - 以降の作業はすべてこのテストモードで行う。
 
-## STEP 2. 商品と価格を作る → `price_id`
+## STEP 2. 商品と価格を作る → `price_id`（3プラン）
 1. 左メニュー **「商品カタログ（Product catalog）」→「商品を追加」**
 2. 入力:
    - 名前: `EMS English Pro`
    - （説明は任意）
-3. 料金体系:
-   - 価格モデル: **標準（定額）**
-   - 金額: **1200**　通貨: **JPY**
-   - **継続（Recurring）** / 請求期間 **月次（Monthly）**
+3. **1つの商品に、価格を3つ追加**します（同じ商品カードに「別の価格を追加」で3本作成）。いずれも **継続（Recurring）／通貨 JPY**：
+
+   | プラン | 金額 | 請求期間 | 実質・月額 |
+   |---|---|---|---|
+   | 月額 | **1200** | 月次（Monthly） | 1,200円/月 |
+   | 6ヶ月 | **6000** | **6ヶ月ごと（Every 6 months / カスタム=6ヶ月）** | 1,000円/月 |
+   | 1年 | **9800** | 年次（Yearly） | 約817円/月 |
+
+   - ※JPYは小数なし通貨なので金額はそのままの数字でOK。
+   - ※6ヶ月は請求期間の選択肢に無ければ「カスタム」で「6」「months」を指定。
 4. **保存（商品を追加）**
-5. 作成された価格の詳細を開き、**価格ID `price_...` をコピー**して控える
-   - ※JPYは小数なし通貨なので「1200」でOK（=税込1200円として扱う）
+5. 作成された **3つの価格ID `price_...` をそれぞれコピー**して控える（月額 / 6ヶ月 / 1年）
 
 ## STEP 3. Webhook を登録 → `whsec_...`
 1. 左メニュー **「開発者（Developers）」→「Webhook」→「エンドポイントを追加」**
@@ -53,13 +58,17 @@
 ## STEP 6. Supabase にシークレットを設定（最重要）
 1. https://supabase.com/dashboard → プロジェクト **`ems-english-trainer`**
 2. **Project Settings → Edge Functions → Secrets**（または左メニュー「Edge Functions」内の Secrets）
-3. 次の **3つ** を追加:
+3. 次の **5つ** を追加:
 
 | 名前 | 値 |
 |---|---|
 | `STRIPE_SECRET_KEY` | STEP4 の `sk_test_...` |
 | `STRIPE_WEBHOOK_SECRET` | STEP3 の `whsec_...` |
-| `STRIPE_PRICE_ID` | STEP2 の `price_...` |
+| `STRIPE_PRICE_ID` | STEP2 の月額 `price_...` |
+| `STRIPE_PRICE_ID_6M` | STEP2 の6ヶ月 `price_...` |
+| `STRIPE_PRICE_ID_1Y` | STEP2 の1年 `price_...` |
+
+- ※ `STRIPE_PRICE_ID_6M` / `STRIPE_PRICE_ID_1Y` が未設定でも、その場合は自動的に月額へフォールバックします（アプリは落ちません）。3プランを出すには3つとも設定してください。
 
 4. 保存（関数は次回呼び出し時に自動でこの値を読み込む）
 
