@@ -57,9 +57,28 @@
   }
 
   /* ---------- ペイウォール モーダル ---------- */
+  var _lastRetryFn = null; // エラー時のリトライ用
   function openPay() { var ov = $("payOv"); if (ov) { setPayMsg(""); ov.classList.add("on"); } }
   function closePay() { var ov = $("payOv"); if (ov) ov.classList.remove("on"); }
-  function setPayMsg(t, cls) { var m = $("payMsg"); if (m) { m.textContent = t || ""; m.className = "auth-msg" + (cls ? " " + cls : ""); } }
+  function setPayMsg(t, cls, retryFn) {
+    var m = $("payMsg");
+    if (!m) return;
+    m.textContent = t || "";
+    m.className = "auth-msg" + (cls ? " " + cls : "");
+    _lastRetryFn = retryFn || null;
+    // リトライボタンを追加/削除
+    var existing = m.nextElementSibling;
+    if (existing && existing.id === "payRetry") existing.remove();
+    if (retryFn) {
+      var btn = document.createElement("button");
+      btn.id = "payRetry";
+      btn.className = "b3 b3-blue b3-md";
+      btn.style.marginTop = "10px";
+      btn.textContent = "再度試す";
+      btn.onclick = function () { retryFn(); };
+      m.parentNode.insertBefore(btn, m.nextSibling);
+    }
+  }
 
   /* ---------- プラン選択 ---------- */
   var selectedPlan = "year"; // 既定は最安の1年プラン（HTML側の .on と一致）
@@ -100,20 +119,20 @@
       var url = r.data && r.data.url;
       if (url) { location.href = url; } else { setPayMsg("決済URLを取得できませんでした", "err"); }
     } catch (e) {
-      setPayMsg("決済準備に失敗しました（時間をおいて再度お試しください）", "err");
+      setPayMsg("決済準備に失敗しました", "err", startCheckout);
       console.warn("[paywall] checkout", e);
     }
   }
 
   async function openPortal(btn) {
     var a = auth();
-    if (!a || !a.client) return;
+    if (!a || !a.client) { setPayMsg("ポータルを開けません", "err"); return; }
     var old = btn ? btn.textContent : "";
     if (btn) { btn.disabled = true; btn.textContent = "準備中…"; }
     try {
       var sres = await a.client.auth.getSession();
       var session = sres && sres.data && sres.data.session;
-      if (!session) { toast("ログインが必要です"); return; }
+      if (!session) { setPayMsg("ログインが必要です"); return; }
       var r = await a.client.functions.invoke("create-portal-session", {
         body: { returnUrl: baseUrl() },
         headers: { Authorization: "Bearer " + session.access_token }
@@ -121,9 +140,9 @@
       if (r.error) throw r.error;
       var url = r.data && r.data.url;
       if (url) { location.href = url; return; }
-      toast("ポータルを開けませんでした");
+      setPayMsg("ポータルを開けませんでした", "err", function () { openPortal(btn); });
     } catch (e) {
-      toast("プラン管理を開けませんでした");
+      setPayMsg("プラン管理を開けませんでした", "err", function () { openPortal(btn); });
       console.warn("[paywall] portal", e);
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = old; }
@@ -163,17 +182,35 @@
     // クエリを消す
     try { history.replaceState(null, "", baseUrl()); } catch (e) {}
     if (co === "success") {
-      toast("決済が完了しました。反映まで数秒かかることがあります…", 4000);
+      openPay();
+      setPayMsg("💳 決済が完了しました\n反映中です...");
       // Webhook 反映は非同期。数回 is_pro を再取得してUIを更新
       var tries = 0;
+      var maxTries = 6;
       var iv = setInterval(function () {
         tries++;
+        var remaining = Math.max(0, (maxTries - tries) * 2.5);
         if (auth() && auth().refreshPro) {
           auth().refreshPro().then(function (isPro) {
-            if (isPro) { clearInterval(iv); toast("Proが有効になりました 🎉", 3500); }
+            if (isPro) {
+              clearInterval(iv);
+              setPayMsg("🎉 Proが有効になりました！\n全機能が使えます", "ok");
+              setTimeout(function () { closePay(); }, 2000);
+            } else if (tries < maxTries) {
+              var sec = Math.ceil(remaining);
+              setPayMsg("💳 決済が完了しました\n反映中です... (" + sec + "秒)");
+            }
+          }).catch(function () {
+            if (tries < maxTries) {
+              var sec = Math.ceil(remaining);
+              setPayMsg("💳 決済が完了しました\n反映中です... (" + sec + "秒)");
+            }
           });
         }
-        if (tries >= 6) clearInterval(iv);
+        if (tries >= maxTries) {
+          clearInterval(iv);
+          setPayMsg("反映に時間がかかっています。\nしばらくしてから、ページを再読込してください。", "err");
+        }
       }, 2500);
     } else if (co === "cancel") {
       toast("購入はキャンセルされました");

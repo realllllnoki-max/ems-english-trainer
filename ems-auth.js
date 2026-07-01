@@ -56,7 +56,7 @@
   /* ---------- DOM ---------- */
   function $(id) { return document.getElementById(id); }
   var ov, msgEl, emailEl, passEl, submitEl, formsEl, acctEl, btn;
-  var mode = "login"; // "login" | "signup"
+  var mode = "signup"; // "login" | "signup" （初回ユーザーはサインアップをデフォルトに）
 
   document.addEventListener("DOMContentLoaded", init);
 
@@ -133,13 +133,13 @@
     if (tS) tS.classList.toggle("on", m === "signup");
     if (m === "login") {
       if (title) title.textContent = "おかえりなさい";
-      if (sub) sub.textContent = "続きを記録するにはログインしてください";
+      if (sub) sub.textContent = "ログインして、続きを保存";
       if (submitEl) submitEl.textContent = "ログイン";
       if (passEl) passEl.setAttribute("autocomplete", "current-password");
     } else {
-      if (title) title.textContent = "アカウント作成";
-      if (sub) sub.textContent = "メールアドレスで無料登録";
-      if (submitEl) submitEl.textContent = "登録する";
+      if (title) title.textContent = "学習を始めよう";
+      if (sub) sub.textContent = "アカウント作成で、記録を同期できます（無料）";
+      if (submitEl) submitEl.textContent = "作成する";
       if (passEl) passEl.setAttribute("autocomplete", "new-password");
     }
     setMsg("", "");
