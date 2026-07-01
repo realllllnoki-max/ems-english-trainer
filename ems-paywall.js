@@ -86,7 +86,12 @@
     try {
       var sres = await a.client.auth.getSession();
       var session = sres && sres.data && sres.data.session;
-      if (!session) { closePay(); a.open(); return; } // 未ログインならログインへ
+      if (!session) {
+        setPayMsg("決済にはログインが必要です");
+        _pendingCheckout = true; // ログイン後に自動Checkout実行を予約
+        a.open(); // ログインモーダル開く（ペイウォールは開いたまま）
+        return;
+      }
       var r = await a.client.functions.invoke("create-checkout-session", {
         body: { returnUrl: baseUrl(), plan: selectedPlan },
         headers: { Authorization: "Bearer " + session.access_token }
@@ -176,6 +181,8 @@
   }
 
   /* ---------- 配線 ---------- */
+  var _pendingCheckout = false; // ログイン後に自動Checkout実行フラグ
+
   document.addEventListener("DOMContentLoaded", function () {
     var pc = $("payClose"); if (pc) pc.onclick = closePay;
     var ov = $("payOv"); if (ov) ov.addEventListener("click", function (e) { if (e.target === ov) closePay(); });
@@ -187,13 +194,23 @@
       if (f && typeof _startScene === "function") _startScene(f);
     };
     var up = $("acctUpgrade"); if (up) up.onclick = function () {
-      var aov = $("authOv"); if (aov) aov.classList.remove("on"); // アカウントモーダルを閉じて
-      openPay();                                                  // ペイウォールを開く
+      var aov = $("authOv"); if (aov) aov.classList.remove("on");
+      openPay();
     };
     var mg = $("acctManage"); if (mg) mg.onclick = function () { openPortal(mg); };
 
     renderPlan();
     handleReturn();
+
+    // ログイン完了後に自動Checkoutを実行（ユーザー再クリック不要）
+    if (window.EMSAuth && typeof window.EMSAuth.onChange === "function") {
+      window.EMSAuth.onChange(function (user) {
+        if (_pendingCheckout && user) {
+          _pendingCheckout = false;
+          setTimeout(function () { startCheckout(); }, 500);
+        }
+      });
+    }
   });
 
   // is_pro / ログイン状態が変わったらプラン表示＋カードのロック表示を更新
