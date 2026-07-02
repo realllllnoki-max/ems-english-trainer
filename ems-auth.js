@@ -16,6 +16,7 @@
     user: null,
     isPro: false,
     _cbs: [],
+    _context: "default", // "default" | "checkout"
     onChange: function (cb) {
       this._cbs.push(cb);
       if (this.client) { try { cb(this.user); } catch (e) {} }
@@ -24,7 +25,7 @@
       var u = this.user, list = this._cbs.slice();
       for (var i = 0; i < list.length; i++) { try { list[i](u); } catch (e) {} }
     },
-    open: function () { openModal(); },
+    open: function (ctx) { if (ctx) EMSAuth._context = ctx; openModal(); },
     signOut: function () { return doSignOut(); },
     refreshPro: function () { return refreshPro(); }
   };
@@ -108,7 +109,7 @@
     renderModalState();
     if (ov) ov.classList.add("on");
   }
-  function closeModal() { if (ov) ov.classList.remove("on"); setMsg("", ""); }
+  function closeModal() { if (ov) ov.classList.remove("on"); setMsg("", ""); EMSAuth._context = "default"; }
 
   function renderModalState() {
     if (!formsEl || !acctEl) return;
@@ -131,14 +132,15 @@
     var tL = $("tabLogin"), tS = $("tabSignup"), title = $("authTitle"), sub = $("authSub");
     if (tL) tL.classList.toggle("on", m === "login");
     if (tS) tS.classList.toggle("on", m === "signup");
+    var isCheckout = EMSAuth._context === "checkout";
     if (m === "login") {
-      if (title) title.textContent = "おかえりなさい";
-      if (sub) sub.textContent = "ログインして、続きを保存";
+      if (title) title.textContent = isCheckout ? "ログイン" : "おかえりなさい";
+      if (sub) sub.textContent = isCheckout ? "Proを購入するにはログインが必要です" : "ログインして、続きを保存";
       if (submitEl) submitEl.textContent = "ログイン";
       if (passEl) passEl.setAttribute("autocomplete", "current-password");
     } else {
-      if (title) title.textContent = "学習を始めよう";
-      if (sub) sub.textContent = "アカウント作成で、記録を同期できます（無料）";
+      if (title) title.textContent = isCheckout ? "アカウント作成" : "学習を始めよう";
+      if (sub) sub.textContent = isCheckout ? "アカウント作成してProを購入（記録はクラウド保存）" : "アカウント作成で、記録を同期できます（無料）";
       if (submitEl) submitEl.textContent = "作成する";
       if (passEl) passEl.setAttribute("autocomplete", "new-password");
     }

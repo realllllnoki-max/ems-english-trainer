@@ -108,7 +108,7 @@
       if (!session) {
         setPayMsg("決済にはログインが必要です");
         _pendingCheckout = true; // ログイン後に自動Checkout実行を予約
-        a.open(); // ログインモーダル開く（ペイウォールは開いたまま）
+        a.open("checkout"); // ログインモーダル開く（決済コンテキスト）
         return;
       }
       var r = await a.client.functions.invoke("create-checkout-session", {
