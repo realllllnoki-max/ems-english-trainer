@@ -25,7 +25,7 @@
       var u = this.user, list = this._cbs.slice();
       for (var i = 0; i < list.length; i++) { try { list[i](u); } catch (e) {} }
     },
-    open: function (ctx) { if (ctx) EMSAuth._context = ctx; openModal(); },
+    open: function (ctx) { if (ctx) EMSAuth._context = ctx; if (ctx === "checkout") mode = "signup"; openModal(); },
     signOut: function () { return doSignOut(); },
     refreshPro: function () { return refreshPro(); }
   };
