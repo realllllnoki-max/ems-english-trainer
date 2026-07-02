@@ -58,7 +58,28 @@
 
   /* ---------- ペイウォール モーダル ---------- */
   var _lastRetryFn = null; // エラー時のリトライ用
-  function openPay() { var ov = $("payOv"); if (ov) { setPayMsg(""); ov.classList.add("on"); } }
+  // 無料シナリオ（レベル1の先頭）を一度でもプレイ済みか。
+  // PROG は ems-app.js の module-scope let（クラシックスクリプト間で字句スコープ共有）。
+  function freeTried() {
+    try {
+      var f = freeScene();
+      return !!(f && typeof PROG !== "undefined" && PROG && PROG[f.id]);
+    } catch (e) { return false; }
+  }
+  // 無料分を試したかで、ペイウォールの上部を出し分ける。
+  //  - 初回: 「無料で試してみる」ボタン＋「または」＋体験を促す文言
+  //  - 試した後: それらを隠し、Proプランに集中した文言へ
+  function applyPayVariant() {
+    var tried = freeTried();
+    var free = $("payFree"), or = $("payOr"), title = $("payTitle"), sub = $("paySub");
+    if (free) free.style.display = tried ? "none" : "";
+    if (or) or.style.display = tried ? "none" : "";
+    if (title) title.textContent = tried ? "Proで全機能を解放 🚑" : "レベル1の1問に挑戦しよう 🚑";
+    if (sub) sub.textContent = tried
+      ? "無料分は体験済みです。Proで全レベル・全機能が使えます。"
+      : "無料で試してから、Proで全機能が使えます。";
+  }
+  function openPay() { var ov = $("payOv"); if (ov) { setPayMsg(""); applyPayVariant(); ov.classList.add("on"); } }
   function closePay() { var ov = $("payOv"); if (ov) ov.classList.remove("on"); }
   function setPayMsg(t, cls, retryFn) {
     var m = $("payMsg");
