@@ -212,11 +212,15 @@ const NAV=[
   {k:"level",icon:"🪜",label:"レベル"},
   {k:"vocab",icon:"🔤",label:"単語"},
   {k:"test",icon:"⚡",label:"テスト"},
+  {k:"review",icon:"🔁",label:"復習"},
   {k:"progress",icon:"📊",label:"記録"}
 ];
 function renderNav(){
-  $("#bottomNav").innerHTML=NAV.map(m=>
-    `<button class="nav-item${m.k===activeMode?" on":""}" data-m="${m.k}"><span class="ni-ic">${m.icon}</span><span class="ni-l">${m.label}</span></button>`).join("");
+  const nav=$("#bottomNav");if(!nav)return;
+  // 苦手シナリオ一覧（activeMode="weak"）は「復習」タブからの遷移なのでタブは点灯維持
+  const navActive=activeMode==="weak"?"review":activeMode;
+  nav.innerHTML=NAV.map(m=>
+    `<button class="nav-item${m.k===navActive?" on":""}" data-m="${m.k}"><span class="ni-ic">${m.icon}</span><span class="ni-l">${m.label}</span></button>`).join("");
   document.querySelectorAll(".nav-item").forEach(b=>b.onclick=()=>{FX.tap();activeMode=b.dataset.m;activeCat="すべて";browseExpanded=false;renderMenuBody();window.scrollTo(0,0);});
 }
 function renderModes(){renderNav();}
@@ -345,9 +349,9 @@ function renderChips(){
 function renderGrid(){
   const g=$("#grid");if(g)g.className="grid";
   let list=activeCat==="すべて"?SCENES:SCENES.filter(s=>s.cat===activeCat);
-  if(activeMode==="review")list=weakList().filter(s=>activeCat==="すべて"||s.cat===activeCat);
+  if(activeMode==="weak")list=weakList().filter(s=>activeCat==="すべて"||s.cat===activeCat);
   $("#grid").innerHTML="";
-  if(list.length===0){$("#grid").innerHTML=`<div class="empty-note">${activeMode==="review"?"🎉 いまは苦手シナリオがありません！<br>練習中に一致度80%未満やスキップがあると、ここに集まります。":"該当するシナリオがありません。"}</div>`;return;}
+  if(list.length===0){$("#grid").innerHTML=`<div class="empty-note">${activeMode==="weak"?"🎉 いまは苦手シナリオがありません！<br>練習中に一致度80%未満やスキップがあると、ここに集まります。":"該当するシナリオがありません。"}</div>`;return;}
   list.forEach(s=>{const {cls,html}=cardHTML(s);const b=document.createElement("button");b.className=cls;b.dataset.fw=s.framework;b.innerHTML=html;b.onclick=()=>{FX.tap();startScene(s);};$("#grid").appendChild(b);});
 }
 
@@ -356,12 +360,18 @@ function renderMenuBody(){
   const oc=$("#practiceCta");if(oc)oc.remove();
   const ot=$("#browseToggle");if(ot)ot.remove();
   if(grid)grid.classList.remove("hide");
+  renderNav();          // 下タブのハイライトを現在の画面に同期
   renderProgress();
   if(activeMode==="test"){
     chipsBar.classList.add("hide");grid.classList.add("hide");mic.classList.add("hide");
-    lead.innerHTML=`<div class="test-intro"><h3>⚡ 実戦テストモード</h3><p>ランダムな5シナリオから1問ずつ、計5問に挑戦。判定をスキップせず、本番のように一気に解きます。</p><button class="b3 b3-white b3-lg" id="startTest" style="color:var(--blue-dark)">テストを始める（5問）</button></div>${weakReviewCardHTML()}${srsCardHTML()}`;
+    lead.innerHTML=`<div class="test-intro"><h3>⚡ 実戦テストモード</h3><p>ランダムな5シナリオから1問ずつ、計5問に挑戦。判定をスキップせず、本番のように一気に解きます。</p><button class="b3 b3-white b3-lg" id="startTest" style="color:var(--blue-dark)">テストを始める（5問）</button></div>`;
     $("#startTest").onclick=()=>{FX.tap();startTest();};
-    const wr=$("#startWeakReview");if(wr)wr.onclick=()=>{FX.tap();activeMode="review";browseExpanded=false;renderNav();renderMenuBody();window.scrollTo(0,0);};
+    return;
+  }
+  if(activeMode==="review"){
+    chipsBar.classList.add("hide");grid.classList.add("hide");mic.classList.add("hide");
+    lead.innerHTML=`<h2>復習</h2><p>苦手なシナリオと、まちがえた単語を集中的におさらいできます。</p>${weakReviewCardHTML()}${srsCardHTML()}`;
+    const wr=$("#startWeakReview");if(wr)wr.onclick=()=>{FX.tap();activeMode="weak";browseExpanded=false;renderMenuBody();window.scrollTo(0,0);};
     const sb=$("#startSrs");if(sb)sb.onclick=()=>{FX.tap();startQuiz("__srs__");};
     return;
   }
@@ -391,7 +401,7 @@ function renderMenuBody(){
     const bt=$("#browseToggle");if(bt)bt.onclick=()=>{FX.tap();browseExpanded=true;renderMenuBody();};
     return;
   }
-  lead.innerHTML=activeMode==="review"?`<h2>苦手の復習</h2><p>一致度80%未満やスキップがあったシナリオです。クリアすると一覧から外れます。</p>`:`<h2>シナリオを選ぼう</h2><p>下から自由に選べます。迷ったら上のボタンへ。</p>`;
+  lead.innerHTML=activeMode==="weak"?`<h2>苦手の復習</h2><p>一致度80%未満やスキップがあったシナリオです。クリアすると一覧から外れます。</p>`:`<h2>シナリオを選ぼう</h2><p>下から自由に選べます。迷ったら上のボタンへ。</p>`;
   const oldCta=$("#practiceCta");if(oldCta)oldCta.remove();
   const oldToggle=$("#browseToggle");if(oldToggle)oldToggle.remove();
   if(activeMode==="all"){
