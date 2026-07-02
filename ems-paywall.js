@@ -1,8 +1,9 @@
 /* ================= EMS PAYWALL =================
  * 課金ロック/解放のフロント側。
- *  - 無料は「レベル1の最初の1問」だけ。それ以外は Pro 限定。
+ *  - ゲスト状態で「レベル1の最初の1問」だけ無料プレイ可能。
+ *  - 2問目以降・他レベル・全機能は Pro 限定（ログイン必須）。
  *  - startScene / startQuiz / startTest をラップして非Proをペイウォールへ。
- *  - Checkout / カスタマーポータルは Edge Function を呼ぶ。
+ *  - 「このプランで続ける」をクリック時のみログイン & Checkout。
  *  - 決済からの戻り（?checkout=success）を検知して is_pro を再取得。
  * 依存: ems-app.js（startScene等, SCENES）, ems-auth.js（window.EMSAuth, window.EMS_PRO）
  * ============================================== */
@@ -56,9 +57,28 @@
   }
 
   /* ---------- ペイウォール モーダル ---------- */
+  var _lastRetryFn = null; // エラー時のリトライ用
   function openPay() { var ov = $("payOv"); if (ov) { setPayMsg(""); ov.classList.add("on"); } }
   function closePay() { var ov = $("payOv"); if (ov) ov.classList.remove("on"); }
-  function setPayMsg(t, cls) { var m = $("payMsg"); if (m) { m.textContent = t || ""; m.className = "auth-msg" + (cls ? " " + cls : ""); } }
+  function setPayMsg(t, cls, retryFn) {
+    var m = $("payMsg");
+    if (!m) return;
+    m.textContent = t || "";
+    m.className = "auth-msg" + (cls ? " " + cls : "");
+    _lastRetryFn = retryFn || null;
+    // リトライボタンを追加/削除
+    var existing = m.nextElementSibling;
+    if (existing && existing.id === "payRetry") existing.remove();
+    if (retryFn) {
+      var btn = document.createElement("button");
+      btn.id = "payRetry";
+      btn.className = "b3 b3-blue b3-md";
+      btn.style.marginTop = "10px";
+      btn.textContent = "再度試す";
+      btn.onclick = function () { retryFn(); };
+      m.parentNode.insertBefore(btn, m.nextSibling);
+    }
+  }
 
   /* ---------- プラン選択 ---------- */
   var selectedPlan = "year"; // 既定は最安の1年プラン（HTML側の .on と一致）
@@ -78,36 +98,53 @@
 
   function baseUrl() { return location.origin + location.pathname; }
 
+  var _checkoutBusy = false; // 二重Checkout防止
   async function startCheckout() {
+    if (_checkoutBusy) return;
     var a = auth();
     if (!a || !a.client) { setPayMsg("ログイン機能を読み込めませんでした", "err"); return; }
+    var go = $("payGo"), goOld = go ? go.textContent : "";
+    function busy(on) {
+      _checkoutBusy = on;
+      if (go) { go.disabled = on; go.textContent = on ? "準備中…" : goOld; }
+    }
+    busy(true);
     setPayMsg("決済ページを準備しています…");
     try {
       var sres = await a.client.auth.getSession();
       var session = sres && sres.data && sres.data.session;
-      if (!session) { closePay(); a.open(); return; } // 未ログインならログインへ
+      if (!session) {
+        busy(false);
+        setPayMsg("決済にはログインが必要です");
+        savePending(); // ログイン完了後（メール確認でページが変わっても）自動で決済を再開
+        a.open("checkout"); // ログインモーダル開く（決済コンテキスト）
+        return;
+      }
       var r = await a.client.functions.invoke("create-checkout-session", {
         body: { returnUrl: baseUrl(), plan: selectedPlan },
         headers: { Authorization: "Bearer " + session.access_token }
       });
       if (r.error) throw r.error;
       var url = r.data && r.data.url;
-      if (url) { location.href = url; } else { setPayMsg("決済URLを取得できませんでした", "err"); }
+      if (url) { location.href = url; return; } // 遷移するので busy は解除しない
+      busy(false);
+      setPayMsg("決済URLを取得できませんでした", "err", startCheckout);
     } catch (e) {
-      setPayMsg("決済準備に失敗しました（時間をおいて再度お試しください）", "err");
+      busy(false);
+      setPayMsg("決済準備に失敗しました", "err", startCheckout);
       console.warn("[paywall] checkout", e);
     }
   }
 
   async function openPortal(btn) {
     var a = auth();
-    if (!a || !a.client) return;
+    if (!a || !a.client) { setPayMsg("ポータルを開けません", "err"); return; }
     var old = btn ? btn.textContent : "";
     if (btn) { btn.disabled = true; btn.textContent = "準備中…"; }
     try {
       var sres = await a.client.auth.getSession();
       var session = sres && sres.data && sres.data.session;
-      if (!session) { toast("ログインが必要です"); return; }
+      if (!session) { setPayMsg("ログインが必要です"); return; }
       var r = await a.client.functions.invoke("create-portal-session", {
         body: { returnUrl: baseUrl() },
         headers: { Authorization: "Bearer " + session.access_token }
@@ -115,9 +152,9 @@
       if (r.error) throw r.error;
       var url = r.data && r.data.url;
       if (url) { location.href = url; return; }
-      toast("ポータルを開けませんでした");
+      setPayMsg("ポータルを開けませんでした", "err", function () { openPortal(btn); });
     } catch (e) {
-      toast("プラン管理を開けませんでした");
+      setPayMsg("プラン管理を開けませんでした", "err", function () { openPortal(btn); });
       console.warn("[paywall] portal", e);
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = old; }
@@ -157,24 +194,67 @@
     // クエリを消す
     try { history.replaceState(null, "", baseUrl()); } catch (e) {}
     if (co === "success") {
-      toast("決済が完了しました。反映まで数秒かかることがあります…", 4000);
+      clearPending();
+      openPay();
+      setPayMsg("💳 決済が完了しました\n反映中です...");
       // Webhook 反映は非同期。数回 is_pro を再取得してUIを更新
       var tries = 0;
+      var maxTries = 6;
       var iv = setInterval(function () {
         tries++;
+        var remaining = Math.max(0, (maxTries - tries) * 2.5);
         if (auth() && auth().refreshPro) {
           auth().refreshPro().then(function (isPro) {
-            if (isPro) { clearInterval(iv); toast("Proが有効になりました 🎉", 3500); }
+            if (isPro) {
+              clearInterval(iv);
+              setPayMsg("🎉 Proが有効になりました！\n全機能が使えます", "ok");
+              setTimeout(function () { closePay(); }, 2000);
+            } else if (tries < maxTries) {
+              var sec = Math.ceil(remaining);
+              setPayMsg("💳 決済が完了しました\n反映中です... (" + sec + "秒)");
+            }
+          }).catch(function () {
+            if (tries < maxTries) {
+              var sec = Math.ceil(remaining);
+              setPayMsg("💳 決済が完了しました\n反映中です... (" + sec + "秒)");
+            }
           });
         }
-        if (tries >= 6) clearInterval(iv);
+        if (tries >= maxTries) {
+          clearInterval(iv);
+          setPayMsg("反映に時間がかかっています。\nしばらくしてから、ページを再読込してください。", "err");
+        }
       }, 2500);
     } else if (co === "cancel") {
       toast("購入はキャンセルされました");
     }
   }
 
-  /* ---------- 配線 ---------- */
+  /* ---------- 購入意思の永続化 ----------
+   * ログイン（特にメール確認でページ遷移する場合）をまたいで
+   * 「決済に進む途中だった」ことを覚えておき、ログイン完了後に自動で再開する。 */
+  var _pendingCheckout = false; // 同一ページ内でのログイン後に自動Checkout実行フラグ
+  var PENDING_KEY = "ems_pending_checkout";
+  var PENDING_TTL = 60 * 60 * 1000; // 1時間で失効
+
+  function savePending() {
+    _pendingCheckout = true;
+    try { localStorage.setItem(PENDING_KEY, JSON.stringify({ plan: selectedPlan, t: Date.now() })); } catch (e) {}
+  }
+  function clearPending() {
+    _pendingCheckout = false;
+    try { localStorage.removeItem(PENDING_KEY); } catch (e) {}
+  }
+  function loadPending() {
+    try {
+      var raw = localStorage.getItem(PENDING_KEY);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      if (!d || !d.t || (Date.now() - d.t) > PENDING_TTL) { clearPending(); return null; }
+      return d;
+    } catch (e) { return null; }
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     var pc = $("payClose"); if (pc) pc.onclick = closePay;
     var ov = $("payOv"); if (ov) ov.addEventListener("click", function (e) { if (e.target === ov) closePay(); });
@@ -186,13 +266,28 @@
       if (f && typeof _startScene === "function") _startScene(f);
     };
     var up = $("acctUpgrade"); if (up) up.onclick = function () {
-      var aov = $("authOv"); if (aov) aov.classList.remove("on"); // アカウントモーダルを閉じて
-      openPay();                                                  // ペイウォールを開く
+      var aov = $("authOv"); if (aov) aov.classList.remove("on");
+      openPay();
     };
     var mg = $("acctManage"); if (mg) mg.onclick = function () { openPortal(mg); };
 
     renderPlan();
     handleReturn();
+
+    // ログイン完了後に自動Checkoutを実行（ユーザー再クリック不要）。
+    // メール確認リンク経由でページが開き直された場合も localStorage から復帰する。
+    if (window.EMSAuth && typeof window.EMSAuth.onChange === "function") {
+      window.EMSAuth.onChange(function (user) {
+        if (!user || pro()) { return; }
+        var saved = loadPending();
+        if (!_pendingCheckout && !saved) return;
+        if (saved && saved.plan) selectedPlan = saved.plan; // 選んでいたプランを復元
+        clearPending();
+        openPay();
+        setPayMsg("決済ページを準備しています…");
+        setTimeout(function () { startCheckout(); }, 400);
+      });
+    }
   });
 
   // is_pro / ログイン状態が変わったらプラン表示＋カードのロック表示を更新

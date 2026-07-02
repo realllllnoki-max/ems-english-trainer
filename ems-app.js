@@ -221,10 +221,14 @@ function renderNav(){
 }
 function renderModes(){renderNav();}
 
+function isGuest(){return !(window.EMSAuth && window.EMSAuth.user);}
 function renderProgress(){
   const host=$("#progHost");
   if(activeMode!=="all"){if(host)host.innerHTML="";return;}
-  if(isNewUser()){
+  // ゲスト（未ログイン）は常にシンプルな単一CTAのみ表示。
+  // ストリーク/XPなどの実績ストリップは「アカウントに保存された記録」を連想させ、
+  // 未ログイン状態と矛盾して迷いを生むため、ログイン後に初めて見せる。
+  if(isNewUser()||isGuest()){
     host.innerHTML=`
       <button class="start-hero" id="startHero">
         <div class="sh-ic">🚑</div>
@@ -232,7 +236,7 @@ function renderProgress(){
         <div class="sh-s">いちばんやさしいシナリオから1問だけ。<br>1分で「型」の感覚がつかめます。</div></div>
         <div class="sh-go">▶</div>
       </button>`;
-    $("#startHero").onclick=()=>{FX.tap();const easy=SCENES.filter(s=>s.lv===1);startScene(easy[Math.floor(Math.random()*easy.length)]||SCENES[0]);};
+    $("#startHero").onclick=()=>{FX.tap();startScene(recommendNext(null)||SCENES[0]);};
     return;
   }
   const tc=todayCount(),goal=STATS.goal||5,streak=STATS.streak||0;
@@ -381,7 +385,7 @@ function renderMenuBody(){
     renderFullDashboard();return;
   }
   chipsBar.classList.remove("hide");grid.classList.remove("hide");mic.classList.remove("hide");
-  if(activeMode==="all"&&isNewUser()){
+  if(activeMode==="all"&&(isNewUser()||isGuest())){
     chipsBar.classList.add("hide");
     const oldT=$("#browseToggle");if(oldT)oldT.remove();
     if(browseExpanded){lead.innerHTML=`<h2>シナリオ一覧</h2><p>気になるものから自由に選べます。迷ったら上の「さっそく始めよう」へ。</p>`;renderChips();renderGrid();return;}
@@ -809,7 +813,11 @@ function finish(){
   $("#home").onclick=()=>{FX.tap();$("#trainer").classList.add("hide");$("#menu").classList.remove("hide");renderMenuBody();};
   const ns=$("#nextScene");if(ns&&finNext){ns.onclick=()=>{FX.tap();startScene(finNext);};}
 }
+function firstFreeScene(){return SCENES.filter(s=>s.lv===1)[0]||SCENES[0]||null;}
 function recommendNext(justFinishedId){
+  // 非Proは無料の1問しか遊べないため、常にその1問を案内する（ランダム選出だと
+  // 無料枠外のLv1シナリオに当たりペイウォールへ弾かれてしまうのを防ぐ）
+  if(!window.EMS_PRO) return firstFreeScene();
   const cleared=new Set(SCENES.filter(s=>PROG[s.id]&&PROG[s.id].cleared).map(s=>s.id));
   const hi=(typeof highestUnlocked==="function")?highestUnlocked():10;
   const candidates=SCENES.filter(s=>s.id!==justFinishedId&&s.lv<=hi&&!cleared.has(s.id));

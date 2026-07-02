@@ -1,6 +1,6 @@
 /* ================= EMS AUTH (Supabase) =================
  * メールログイン（メール＋パスワード）。Google は後から追加予定。
- * 無料範囲はログインなしでも使える。ログインは任意。
+ * ゲストでは無料の1問をプレイ可能。有料化するときだけログイン。
  * 公開して安全な値のみ（URL / publishable key）をここに置く。
  * service role などのサーバー専用キーは絶対に置かない。
  * ====================================================== */
@@ -16,6 +16,7 @@
     user: null,
     isPro: false,
     _cbs: [],
+    _context: "default", // "default" | "checkout"
     onChange: function (cb) {
       this._cbs.push(cb);
       if (this.client) { try { cb(this.user); } catch (e) {} }
@@ -24,7 +25,7 @@
       var u = this.user, list = this._cbs.slice();
       for (var i = 0; i < list.length; i++) { try { list[i](u); } catch (e) {} }
     },
-    open: function () { openModal(); },
+    open: function (ctx) { if (ctx) EMSAuth._context = ctx; openModal(); },
     signOut: function () { return doSignOut(); },
     refreshPro: function () { return refreshPro(); }
   };
@@ -56,7 +57,7 @@
   /* ---------- DOM ---------- */
   function $(id) { return document.getElementById(id); }
   var ov, msgEl, emailEl, passEl, submitEl, formsEl, acctEl, btn;
-  var mode = "login"; // "login" | "signup"
+  var mode = "signup"; // "login" | "signup" （初回ユーザーはサインアップをデフォルトに）
 
   document.addEventListener("DOMContentLoaded", init);
 
@@ -76,7 +77,7 @@
     if (passEl) passEl.addEventListener("keydown", function (e) { if (e.key === "Enter") onSubmit(); });
     var so = $("authSignout"); if (so) so.addEventListener("click", doSignOut);
 
-    if (!EMSAuth.client) return;
+    if (!EMSAuth.client) { renderHeader(); return; } // SDK読み込み失敗時もゲスト表示（ボタン非表示）にする
 
     // 既存セッションの復元＋状態変化の監視
     EMSAuth.client.auth.getUser().then(function (res) {
@@ -93,12 +94,12 @@
   function renderHeader() {
     if (!btn) return;
     if (EMSAuth.user) {
+      btn.style.display = "flex";
       var em = EMSAuth.user.email || "";
       btn.innerHTML = '<span class="av">' + esc(initial(em)) + "</span>";
       btn.setAttribute("aria-label", "アカウント: " + em);
     } else {
-      btn.textContent = "ログイン";
-      btn.setAttribute("aria-label", "ログイン");
+      btn.style.display = "none";
     }
   }
 
@@ -108,7 +109,7 @@
     renderModalState();
     if (ov) ov.classList.add("on");
   }
-  function closeModal() { if (ov) ov.classList.remove("on"); setMsg("", ""); }
+  function closeModal() { if (ov) ov.classList.remove("on"); setMsg("", ""); EMSAuth._context = "default"; }
 
   function renderModalState() {
     if (!formsEl || !acctEl) return;
@@ -131,15 +132,16 @@
     var tL = $("tabLogin"), tS = $("tabSignup"), title = $("authTitle"), sub = $("authSub");
     if (tL) tL.classList.toggle("on", m === "login");
     if (tS) tS.classList.toggle("on", m === "signup");
+    var isCheckout = EMSAuth._context === "checkout";
     if (m === "login") {
-      if (title) title.textContent = "おかえりなさい";
-      if (sub) sub.textContent = "続きを記録するにはログインしてください";
+      if (title) title.textContent = isCheckout ? "ログイン" : "おかえりなさい";
+      if (sub) sub.textContent = isCheckout ? "Proを購入するにはログインが必要です" : "ログインして、続きを保存";
       if (submitEl) submitEl.textContent = "ログイン";
       if (passEl) passEl.setAttribute("autocomplete", "current-password");
     } else {
-      if (title) title.textContent = "アカウント作成";
-      if (sub) sub.textContent = "メールアドレスで無料登録";
-      if (submitEl) submitEl.textContent = "登録する";
+      if (title) title.textContent = isCheckout ? "アカウント作成" : "学習を始めよう";
+      if (sub) sub.textContent = isCheckout ? "アカウント作成してProを購入（記録はクラウド保存）" : "アカウント作成で、記録を同期できます（無料）";
+      if (submitEl) submitEl.textContent = "作成する";
       if (passEl) passEl.setAttribute("autocomplete", "new-password");
     }
     setMsg("", "");
@@ -163,7 +165,8 @@
       if (res.error) { setMsg(jpError(res.error), "err"); return; }
       if (mode === "signup" && res.data && !res.data.session) {
         // メール確認が有効な場合：確認メール送信
-        setMsg("確認メールを送信しました。メール内のリンクを開くと登録完了です。", "ok");
+        var extra = (EMSAuth._context === "checkout") ? "登録が完了すると、そのまま決済に進めます。" : "";
+        setMsg("確認メールを送信しました。メール内のリンクを開くと登録完了です。" + extra, "ok");
         return;
       }
       // ログイン成功（onAuthStateChange が状態を更新）
