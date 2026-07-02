@@ -807,7 +807,7 @@ function finish(){
       <div class="tiles"><div class="tile t-g"><small>合格</small><b>${passed}</b></div><div class="tile t-b"><small>質問</small><b>${path.length}</b></div><div class="tile t-a"><small>挑戦</small><b>${attempts}</b></div></div>
       <div class="route"><div class="rh">🧭 たどった問診ルート</div>${rows}</div>
       <div class="fin-acts"><button class="b3 b3-white b3-md" id="again">別ルートを試す</button><button class="b3 b3-white b3-md" id="home">メニューへ</button></div>
-      ${finNext&&!testActive?`<div class="next-up"><div class="nu-label">▶ つぎのおすすめ</div><button class="nu-card" id="nextScene"><span class="nu-ic">${finNext.icon}</span><span class="nu-tx"><span class="nu-t">${finNext.title}</span><span class="nu-s">Lv${finNext.lv}・${FRAMEWORKS[finNext.framework].name}</span></span><span class="nu-go">${I.go}</span></button></div>`:""}
+      ${finNext&&!testActive?(()=>{const lk=typeof window.emsSceneStatus==="function"&&window.emsSceneStatus(finNext)==="locked";return `<div class="next-up"><div class="nu-label">${lk?"▶ つづきはProで":"▶ つぎのおすすめ"}</div><button class="nu-card" id="nextScene"><span class="nu-ic">${lk?"🔒":finNext.icon}</span><span class="nu-tx"><span class="nu-t">${finNext.title}</span><span class="nu-s">${lk?`Lv${finNext.lv}・タップしてProで解放`:`Lv${finNext.lv}・${FRAMEWORKS[finNext.framework].name}`}</span></span><span class="nu-go">${I.go}</span></button></div>`;})():""}
     </div>`;
   $("#again").onclick=()=>{FX.tap();startScene(scene);};
   $("#home").onclick=()=>{FX.tap();$("#trainer").classList.add("hide");$("#menu").classList.remove("hide");renderMenuBody();};
@@ -815,9 +815,17 @@ function finish(){
 }
 function firstFreeScene(){return SCENES.filter(s=>s.lv===1)[0]||SCENES[0]||null;}
 function recommendNext(justFinishedId){
-  // 非Proは無料の1問しか遊べないため、常にその1問を案内する（ランダム選出だと
-  // 無料枠外のLv1シナリオに当たりペイウォールへ弾かれてしまうのを防ぐ）
-  if(!window.EMS_PRO) return firstFreeScene();
+  // 非Proは無料の1問しか遊べない。開始導線では常にその1問を案内するが、
+  // 無料の1問を終えた直後は同じ問題を薦めるとループするため、次のロック問題を
+  // 薦める（タップでペイウォールが開き、購入導線につながる）
+  if(!window.EMS_PRO){
+    const free=firstFreeScene();
+    if(justFinishedId&&free&&justFinishedId===free.id){
+      const rest=SCENES.filter(s=>s.id!==free.id).sort((a,b)=>a.lv-b.lv);
+      return rest[0]||free;
+    }
+    return free;
+  }
   const cleared=new Set(SCENES.filter(s=>PROG[s.id]&&PROG[s.id].cleared).map(s=>s.id));
   const hi=(typeof highestUnlocked==="function")?highestUnlocked():10;
   const candidates=SCENES.filter(s=>s.id!==justFinishedId&&s.lv<=hi&&!cleared.has(s.id));
