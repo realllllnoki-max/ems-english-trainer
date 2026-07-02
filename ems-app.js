@@ -806,7 +806,7 @@ function finish(){
       ${activityFeedback(act)}
       <div class="tiles"><div class="tile t-g"><small>合格</small><b>${passed}</b></div><div class="tile t-b"><small>質問</small><b>${path.length}</b></div><div class="tile t-a"><small>挑戦</small><b>${attempts}</b></div></div>
       <div class="route"><div class="rh">🧭 たどった問診ルート</div>${rows}</div>
-      <div class="fin-acts"><button class="b3 b3-white b3-md" id="again">別ルートを試す</button><button class="b3 b3-white b3-md" id="home">メニューへ</button></div>
+      <div class="fin-acts"><button class="b3 b3-white b3-md" id="again">${allPass?"もう一度練習":"全問クリアに挑戦"}</button><button class="b3 b3-white b3-md" id="home">メニューへ</button></div>
       ${finNext&&!testActive?(()=>{const lk=typeof window.emsSceneStatus==="function"&&window.emsSceneStatus(finNext)==="locked";return `<div class="next-up"><div class="nu-label">${lk?"▶ つづきはProで":"▶ つぎのおすすめ"}</div><button class="nu-card" id="nextScene"><span class="nu-ic">${lk?"🔒":finNext.icon}</span><span class="nu-tx"><span class="nu-t">${finNext.title}</span><span class="nu-s">${lk?`Lv${finNext.lv}・タップしてProで解放`:`Lv${finNext.lv}・${FRAMEWORKS[finNext.framework].name}`}</span></span><span class="nu-go">${I.go}</span></button></div>`;})():""}
     </div>`;
   $("#again").onclick=()=>{FX.tap();startScene(scene);};
