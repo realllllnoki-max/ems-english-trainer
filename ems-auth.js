@@ -77,7 +77,7 @@
     if (passEl) passEl.addEventListener("keydown", function (e) { if (e.key === "Enter") onSubmit(); });
     var so = $("authSignout"); if (so) so.addEventListener("click", doSignOut);
 
-    if (!EMSAuth.client) return;
+    if (!EMSAuth.client) { renderHeader(); return; } // SDK読み込み失敗時もゲスト表示（ボタン非表示）にする
 
     // 既存セッションの復元＋状態変化の監視
     EMSAuth.client.auth.getUser().then(function (res) {
