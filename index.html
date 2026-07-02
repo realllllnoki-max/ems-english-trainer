@@ -140,12 +140,6 @@
   .fwh-k{width:30px;height:30px;border-radius:8px;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:900;font-size:.95rem;flex:0 0 auto}
   .fwh-w{font-weight:900;font-size:.95rem;color:var(--ink)}
   .fwh-j{font-size:.78rem;color:var(--ink-soft);font-family:"Noto Sans JP",sans-serif}
-  .steps{display:flex;gap:7px;align-items:center}
-  .dot{
-    flex:1;height:8px;border-radius:99px;background:var(--line);transition:.25s;
-  }
-  .dot.ok{background:var(--green)}
-  .dot.on{background:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
   .stage{margin-top:16px}
   .who{display:flex;align-items:center;gap:8px;margin-bottom:8px}
   .ava{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:1.3rem;border:2px solid var(--line);background:#fff;flex:0 0 auto}
@@ -759,9 +753,6 @@
       <button class="quit" id="quitBtn" aria-label="やめる">✕</button>
       <div class="pbar"><i id="pfill"></i></div>
       <div class="t-scene" id="tScene"></div>
-    </div>
-    <div class="proto">
-      <div class="steps" id="steps"></div>
     </div>
     <div id="stage" class="stage"></div>
   </div>

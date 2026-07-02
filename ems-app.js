@@ -641,7 +641,15 @@ function longestFrom(nodes,id,memo={}){
   nexts.forEach(t=>{best=Math.max(best,longestFrom(nodes,t,memo));});
   memo[id]=1+best;return memo[id];
 }
-function setProgress(){const pct=Math.min(100,Math.round(path.length/estTotal*100));$("#pfill").style.width=pct+"%";}
+function setProgress(){
+  // Smooth gauge: fill by actual questions answered vs. done + longest remaining
+  // path from the current node. Works for any scenario length and reaches ~100%
+  // naturally on every branch, instead of counting fixed framework steps.
+  const remain=scene&&curId?longestFrom(scene.nodes,curId):0;
+  const total=Math.max(path.length+remain,estTotal,1);
+  const pct=Math.min(100,Math.round(path.length/total*100));
+  $("#pfill").style.width=pct+"%";
+}
 
 /* ================= FLOW ================= */
 function startScene(s){
@@ -670,10 +678,6 @@ $("#quitBtn").onclick=()=>{
   FX.tap();stopRecog();speechSynthesis.cancel();clearPlaying();testActive=false;
   $("#trainer").classList.add("hide");$("#menu").classList.remove("hide");renderMenuBody();
 };
-function renderSteps(active){
-  const seq=fw.steps.map(st=>st.k);const done=new Set(path.map(p=>p.step));
-  $("#steps").innerHTML=seq.map(k=>{let cls="dot";if(k===active)cls+=" on";else if(done.has(k))cls+=" ok";return `<span class="${cls}"></span>`;}).join("");
-}
 function showFrameworkHelp(){
   const rows=fw.steps.map(st=>`<div class="fwh-row"><span class="fwh-k">${st.k}</span><div><div class="fwh-w">${st.word}</div><div class="fwh-j">${st.jp}</div></div></div>`).join("");
   const old=document.getElementById("fwhOverlay");if(old)old.remove();
@@ -683,7 +687,7 @@ function showFrameworkHelp(){
 }
 function renderNode(){
   const node=scene.nodes[curId];failStreak=0;
-  setProgress();renderSteps(node.step);
+  setProgress();
   const guiding=(STATS.guideDone||0)<2&&!testActive;
   let micLabel,micClass="b3 b3-lg b3-mic ",micAction;
   if(!SR){micLabel=`次へ ${I.go}`;micClass+="b3-green";micAction="next";}
@@ -783,12 +787,11 @@ function renderReply(node,aEn,aJp,nextId,route){
   $("#pPlay").onclick=(e)=>speak(aEn,0.95,e.currentTarget);
   $("#pTrans").onclick=(e)=>{const jp=$("#pjp");jp.classList.toggle("show");const tx=e.currentTarget.querySelector(".pb-tx");if(tx)tx.textContent=jp.classList.contains("show")?"訳を隠す":"日本語訳";};
   path.push({step:node.step,q:node.q});
-  setProgress();renderSteps(null);
+  setProgress();
   $("#goNext").onclick=()=>{FX.tap();if(isEnd)finish();else{curId=nextId||node.next;renderNode();}};
 }
 function finish(){
   $("#pfill").style.width="100%";
-  $("#steps").innerHTML=fw.steps.map(()=>`<span class="dot ok"></span>`).join("");
   const rows=path.map((p,i)=>`<div class="rr"><span class="rt">${i+1}</span><span>${p.q}</span></div>`).join("");
   const allPass=passed>=path.length&&path.length>0;
   const runPct=path.length?Math.round(passed/path.length*100):0;
