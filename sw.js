@@ -2,11 +2,12 @@
  * オフライン対応のためアプリ本体をキャッシュする。
  * 方針:
  *   - 同一オリジンのアプリ資産のみ扱う（CDN/Supabase は素通し＝常にネットワーク）
- *   - HTML（ナビゲーション）は network-first（更新を取り込みやすく）
- *   - その他の同一オリジン資産は stale-while-revalidate
- * 更新時は CACHE のバージョンを上げる。
+ *   - オンライン時は network-first（cache:"no-cache" でHTTPキャッシュも
+ *     必ず再検証 → ETag一致なら軽量な304）。取得成功時にキャッシュ更新。
+ *   - オフライン時のみキャッシュから応答（PWAとして動き続ける）
+ * これにより、デプロイ後は通常のリロードだけで常に最新版が反映される。
  * ========================================================== */
-const CACHE = "ems-cache-v3";
+const CACHE = "ems-cache-v4";
 const SHELL = [
   "./",
   "./index.html",
@@ -49,26 +50,17 @@ self.addEventListener("fetch", (e) => {
   // 別オリジン（Google Fonts / jsdelivr SDK / Supabase API）は素通し
   if (url.origin !== self.location.origin) return;
 
-  // HTML ナビゲーション: network-first（取れたらキャッシュ更新、ダメならキャッシュ）
-  if (req.mode === "navigate") {
-    e.respondWith(
-      fetch(req)
-        .then((r) => { const cc = r.clone(); caches.open(CACHE).then((c) => c.put(req, cc)); return r; })
-        .catch(() => caches.match(req).then((m) => m || caches.match("./index.html")))
-    );
-    return;
-  }
-
-  // 同一オリジンの静的資産: stale-while-revalidate
+  // network-first: cache:"no-cache" でブラウザHTTPキャッシュを再検証させる
+  // （GitHub Pages は max-age=600 を返すため、これがないと10分間古いまま）。
+  // 未変更なら 304 が返り転送は軽い。オフライン時はキャッシュへフォールバック。
   e.respondWith(
-    caches.match(req).then((cached) => {
-      const net = fetch(req)
-        .then((r) => {
-          if (r && r.status === 200) { const cc = r.clone(); caches.open(CACHE).then((c) => c.put(req, cc)); }
-          return r;
-        })
-        .catch(() => cached);
-      return cached || net;
-    })
+    fetch(req, { cache: "no-cache" })
+      .then((r) => {
+        if (r && r.status === 200) { const cc = r.clone(); caches.open(CACHE).then((c) => c.put(req, cc)); }
+        return r;
+      })
+      .catch(() =>
+        caches.match(req).then((m) => m || (req.mode === "navigate" ? caches.match("./index.html") : undefined))
+      )
   );
 });
