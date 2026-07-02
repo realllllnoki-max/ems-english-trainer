@@ -165,7 +165,8 @@
       if (res.error) { setMsg(jpError(res.error), "err"); return; }
       if (mode === "signup" && res.data && !res.data.session) {
         // メール確認が有効な場合：確認メール送信
-        setMsg("確認メールを送信しました。メール内のリンクを開くと登録完了です。", "ok");
+        var extra = (EMSAuth._context === "checkout") ? "登録が完了すると、そのまま決済に進めます。" : "";
+        setMsg("確認メールを送信しました。メール内のリンクを開くと登録完了です。" + extra, "ok");
         return;
       }
       // ログイン成功（onAuthStateChange が状態を更新）

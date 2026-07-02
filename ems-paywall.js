@@ -98,16 +98,25 @@
 
   function baseUrl() { return location.origin + location.pathname; }
 
+  var _checkoutBusy = false; // 二重Checkout防止
   async function startCheckout() {
+    if (_checkoutBusy) return;
     var a = auth();
     if (!a || !a.client) { setPayMsg("ログイン機能を読み込めませんでした", "err"); return; }
+    var go = $("payGo"), goOld = go ? go.textContent : "";
+    function busy(on) {
+      _checkoutBusy = on;
+      if (go) { go.disabled = on; go.textContent = on ? "準備中…" : goOld; }
+    }
+    busy(true);
     setPayMsg("決済ページを準備しています…");
     try {
       var sres = await a.client.auth.getSession();
       var session = sres && sres.data && sres.data.session;
       if (!session) {
+        busy(false);
         setPayMsg("決済にはログインが必要です");
-        _pendingCheckout = true; // ログイン後に自動Checkout実行を予約
+        savePending(); // ログイン完了後（メール確認でページが変わっても）自動で決済を再開
         a.open("checkout"); // ログインモーダル開く（決済コンテキスト）
         return;
       }
@@ -117,8 +126,11 @@
       });
       if (r.error) throw r.error;
       var url = r.data && r.data.url;
-      if (url) { location.href = url; } else { setPayMsg("決済URLを取得できませんでした", "err"); }
+      if (url) { location.href = url; return; } // 遷移するので busy は解除しない
+      busy(false);
+      setPayMsg("決済URLを取得できませんでした", "err", startCheckout);
     } catch (e) {
+      busy(false);
       setPayMsg("決済準備に失敗しました", "err", startCheckout);
       console.warn("[paywall] checkout", e);
     }
@@ -182,6 +194,7 @@
     // クエリを消す
     try { history.replaceState(null, "", baseUrl()); } catch (e) {}
     if (co === "success") {
+      clearPending();
       openPay();
       setPayMsg("💳 決済が完了しました\n反映中です...");
       // Webhook 反映は非同期。数回 is_pro を再取得してUIを更新
@@ -217,8 +230,30 @@
     }
   }
 
-  /* ---------- 配線 ---------- */
-  var _pendingCheckout = false; // ログイン後に自動Checkout実行フラグ
+  /* ---------- 購入意思の永続化 ----------
+   * ログイン（特にメール確認でページ遷移する場合）をまたいで
+   * 「決済に進む途中だった」ことを覚えておき、ログイン完了後に自動で再開する。 */
+  var _pendingCheckout = false; // 同一ページ内でのログイン後に自動Checkout実行フラグ
+  var PENDING_KEY = "ems_pending_checkout";
+  var PENDING_TTL = 60 * 60 * 1000; // 1時間で失効
+
+  function savePending() {
+    _pendingCheckout = true;
+    try { localStorage.setItem(PENDING_KEY, JSON.stringify({ plan: selectedPlan, t: Date.now() })); } catch (e) {}
+  }
+  function clearPending() {
+    _pendingCheckout = false;
+    try { localStorage.removeItem(PENDING_KEY); } catch (e) {}
+  }
+  function loadPending() {
+    try {
+      var raw = localStorage.getItem(PENDING_KEY);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      if (!d || !d.t || (Date.now() - d.t) > PENDING_TTL) { clearPending(); return null; }
+      return d;
+    } catch (e) { return null; }
+  }
 
   document.addEventListener("DOMContentLoaded", function () {
     var pc = $("payClose"); if (pc) pc.onclick = closePay;
@@ -239,13 +274,18 @@
     renderPlan();
     handleReturn();
 
-    // ログイン完了後に自動Checkoutを実行（ユーザー再クリック不要）
+    // ログイン完了後に自動Checkoutを実行（ユーザー再クリック不要）。
+    // メール確認リンク経由でページが開き直された場合も localStorage から復帰する。
     if (window.EMSAuth && typeof window.EMSAuth.onChange === "function") {
       window.EMSAuth.onChange(function (user) {
-        if (_pendingCheckout && user) {
-          _pendingCheckout = false;
-          setTimeout(function () { startCheckout(); }, 500);
-        }
+        if (!user || pro()) { return; }
+        var saved = loadPending();
+        if (!_pendingCheckout && !saved) return;
+        if (saved && saved.plan) selectedPlan = saved.plan; // 選んでいたプランを復元
+        clearPending();
+        openPay();
+        setPayMsg("決済ページを準備しています…");
+        setTimeout(function () { startCheckout(); }, 400);
       });
     }
   });
