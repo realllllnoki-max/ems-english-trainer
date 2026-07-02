@@ -260,14 +260,12 @@ function renderProgress(){
 
 function renderFullDashboard(){
   const done=clearedCount(),total=SCENES.length,pct=Math.round(done/total*100);
-  const wk=weakList().length;
   const tc=todayCount(),goal=STATS.goal||5;
   const goalPct=Math.min(100,Math.round(tc/goal*100));
   const goalDone=tc>=goal;
   const streak=STATS.streak||0;
   const earned=BADGES.filter(b=>(STATS.badges||[]).includes(b.id));
   const badgeIcons=earned.length?earned.slice(-6).map(b=>`<span class="badge-chip" title="${b.name}">${b.ic}</span>`).join(""):`<span class="badge-empty">学習を始めるとバッジが集まります</span>`;
-  const weakBtn=wk>0?`<button class="dash-weak" id="dashWeak">🔁 苦手シナリオ ${wk}件を復習</button>`:"";
   const totalQ=totalActivity(),days=studyDays(),best=STATS.best||0;
   const summary=`<div class="sum-grid">
       <div class="sum-cell"><span class="sc-ic">💎</span><b>${STATS.xp||0}</b><small>累計XP</small></div>
@@ -304,7 +302,6 @@ function renderFullDashboard(){
     <div class="prog-card"><div class="prog-top"><span style="font-size:1.2rem">📈</span><span class="pt">シナリオ進捗</span><span class="pn">${done}/${total}</span></div><div class="prog-line"><i style="width:${pct}%"></i></div></div>
     ${mastery}
     <div class="badge-strip" style="margin-top:12px"><span class="badge-head">🎖️ バッジ ${earned.length}/${BADGES.length}</span><span class="badge-list">${badgeIcons}</span><button class="badge-more" id="badgeMore">一覧</button></div>
-    ${weakBtn}
     <div class="prog-reset" style="margin-top:14px"><button id="soundToggle" style="margin-right:12px">🔊 サウンド: ${FX.on?"ON":"OFF"}</button><button id="goalEdit" style="margin-right:12px">目標 ${goal}問/日</button><button id="resetProg">記録をリセット</button></div>`;
   $("#resetProg").onclick=async()=>{
     if(!confirm("学習の記録（進捗・ストリーク・バッジ・XP）をすべて消します。よろしいですか？"))return;
@@ -314,8 +311,6 @@ function renderFullDashboard(){
   $("#goalEdit").onclick=()=>{FX.tap();const opts=[3,5,10];const cur=opts.indexOf(STATS.goal);STATS.goal=opts[(cur+1)%opts.length];saveStats();renderFullDashboard();};
   $("#soundToggle").onclick=()=>{const on=FX.toggle();if(on)FX.correct();renderFullDashboard();};
   $("#badgeMore").onclick=()=>{FX.tap();showBadges();};
-  const dw=$("#dashWeak");
-  if(dw)dw.onclick=()=>{FX.tap();activeMode="review";browseExpanded=false;renderNav();renderMenuBody();window.scrollTo(0,0);};
 }
 
 function showBadges(){
@@ -364,8 +359,9 @@ function renderMenuBody(){
   renderProgress();
   if(activeMode==="test"){
     chipsBar.classList.add("hide");grid.classList.add("hide");mic.classList.add("hide");
-    lead.innerHTML=`<div class="test-intro"><h3>⚡ 実戦テストモード</h3><p>ランダムな5シナリオから1問ずつ、計5問に挑戦。判定をスキップせず、本番のように一気に解きます。</p><button class="b3 b3-white b3-lg" id="startTest" style="color:var(--blue-dark)">テストを始める（5問）</button></div>${srsCardHTML()}`;
+    lead.innerHTML=`<div class="test-intro"><h3>⚡ 実戦テストモード</h3><p>ランダムな5シナリオから1問ずつ、計5問に挑戦。判定をスキップせず、本番のように一気に解きます。</p><button class="b3 b3-white b3-lg" id="startTest" style="color:var(--blue-dark)">テストを始める（5問）</button></div>${weakReviewCardHTML()}${srsCardHTML()}`;
     $("#startTest").onclick=()=>{FX.tap();startTest();};
+    const wr=$("#startWeakReview");if(wr)wr.onclick=()=>{FX.tap();activeMode="review";browseExpanded=false;renderNav();renderMenuBody();window.scrollTo(0,0);};
     const sb=$("#startSrs");if(sb)sb.onclick=()=>{FX.tap();startQuiz("__srs__");};
     return;
   }
@@ -494,6 +490,18 @@ function srsStats(){
   return {due,byStage,nextDue,total:Object.keys(SRS).length};
 }
 function fmtMD(ts){const d=new Date(ts);return (d.getMonth()+1)+"/"+d.getDate();}
+function weakReviewCardHTML(){
+  const wk=weakList().length;
+  const status=wk>0?`📌 苦手にマークされたシナリオ：<b>${wk}件</b>`:"🎉 いまは苦手シナリオはありません！";
+  const btn=wk>0
+    ?`<button class="b3 b3-white b3-lg" id="startWeakReview">苦手シナリオを復習（${wk}件）</button>`
+    :`<button class="b3 b3-white b3-lg" id="startWeakReview" disabled>苦手シナリオはありません</button>`;
+  return `<div class="srs-card">
+    <div class="srs-head"><span class="srs-ic">🔁</span><div><div class="srs-t">苦手シナリオ復習</div><div class="srs-sub">一致度80%未満やスキップがあったシナリオが集まります。クリアすると一覧から外れます。</div></div></div>
+    <div class="srs-status">${status}</div>
+    ${btn}
+  </div>`;
+}
 function srsCardHTML(){
   const st=srsStats();
   const labels=["1日","3日","7日","14日","30日"];
