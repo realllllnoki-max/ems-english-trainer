@@ -650,7 +650,8 @@
   /* ===== Auth modal ===== */
   .auth-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center;padding:16px}
   .auth-ov.on{display:flex}
-  .auth-card{background:#fff;border-radius:var(--r-lg);max-width:380px;width:100%;padding:22px 22px 24px;box-shadow:0 14px 44px rgba(0,0,0,.22);position:relative}
+  .auth-card{background:#fff;border-radius:var(--r-lg);max-width:380px;width:100%;padding:22px 22px 24px;box-shadow:0 14px 44px rgba(0,0,0,.22);position:relative;
+    max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   .auth-close{position:absolute;top:12px;right:14px;background:none;border:none;font-size:1.5rem;color:var(--hare);line-height:1;padding:4px;min-height:auto}
   .auth-card h3{font-size:1.3rem;font-weight:900;color:var(--ink);margin-bottom:3px}
   .auth-card .sub{font-size:.84rem;color:var(--ink-soft);margin-bottom:16px}
