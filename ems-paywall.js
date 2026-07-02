@@ -115,8 +115,8 @@
       var session = sres && sres.data && sres.data.session;
       if (!session) {
         busy(false);
-        setPayMsg("決済にはログインが必要です");
         savePending(); // ログイン完了後（メール確認でページが変わっても）自動で決済を再開
+        closePay(); // ペイウォールを閉じてからログインを開く（重ね順で裏に隠れて「固まった」ように見えるのを防ぐ）
         a.open("checkout"); // ログインモーダル開く（決済コンテキスト）
         return;
       }
