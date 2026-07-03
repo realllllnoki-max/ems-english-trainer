@@ -434,7 +434,18 @@ function fade(el, p, dy){
   el.style.transform = 'translateY(' + (1 - e) * (dy || 0) + 'px)';
 }
 
-window.__tpl = { setup, seek, TOTAL };
+/* expose the resolved timeline (post beat-snapping) so the audio pipeline
+ * can place BGM and SFX exactly where the visuals cut */
+function timeline(){
+  const b4 = BEATS.find(b => b[0] === 'b4');
+  const count = document.querySelectorAll('#b4 .w').length;
+  const stagger = Math.min(220, 2000 / count);
+  const grid = gridTimes(b4[1] + 150, count, b4[2] - 800);
+  const wordTimes = Array.from({ length: count }, (_, i) => grid ? grid[i] : b4[1] + 200 + i * stagger);
+  return { beats: BEATS, total: TOTAL, wordTimes, beatTimes: BEAT_TIMES };
+}
+
+window.__tpl = { setup, seek, TOTAL, timeline };
 </script>
 </body>
 </html>

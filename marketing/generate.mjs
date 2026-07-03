@@ -17,7 +17,8 @@
  *   node generate.mjs --beats beats.json  # explicit beat timestamps (seconds)
  */
 import { chromium } from 'playwright-core';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { synthBaseTrack } from './audio.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -58,7 +59,15 @@ function loadBeatsMs() {
   }
   return null;
 }
-const beatsMs = loadBeatsMs();
+const silent = args.includes('--silent');
+let beatsMs = loadBeatsMs();
+// with audio enabled, default to a 104 BPM grid so the synthesized BGM and
+// the visual cuts lock together out of the box
+if (!beatsMs && !silent) {
+  const step = 60000 / 104;
+  beatsMs = [];
+  for (let b = 0; b < 25000; b += step) beatsMs.push(Math.round(b));
+}
 if (beatsMs) console.log(`Beat sync: ${beatsMs.length} beats loaded`);
 
 /* ---------- load phrase cards from the app's own data ---------- */
@@ -115,6 +124,14 @@ function ffmpegPath() {
   return require('@ffmpeg-installer/ffmpeg').path;
 }
 
+/* media duration in ms, parsed from ffmpeg's stderr banner */
+function mediaDurationMs(file) {
+  const res = spawnSync(ffmpegPath(), ['-i', file], { encoding: 'utf8' });
+  const m = /Duration:\s*(\d+):(\d+):([\d.]+)/.exec(res.stderr || '');
+  if (!m) throw new Error('could not read duration of ' + file);
+  return Math.round(((+m[1] * 60 + +m[2]) * 60 + +m[3]) * 1000);
+}
+
 function buildCaption(card) {
   return [
     `【救急英語】「${card.qjp}」— 英語で言えますか？`,
@@ -156,14 +173,15 @@ const browser = await chromium.launch({
   executablePath: chromiumExecutable(),
   args: ['--no-sandbox', '--force-color-profile=srgb', '--font-render-hinting=none'],
 });
+let timeline = null;
 try {
   const page = await browser.newPage({ viewport: { width: 1080, height: 1920 } });
   await page.goto(pathToFileURL(path.join(HERE, 'template.html')).href);
   await page.evaluate(p => window.__tpl.setup(p), { ...card, iconSrc, mascotSrc, beatsMs });
   await page.evaluate(() => document.fonts.ready);
+  timeline = await page.evaluate(() => window.__tpl.timeline());
 
-  const total = await page.evaluate(() => window.__tpl.TOTAL);
-  const frames = Math.round((total / 1000) * fps);
+  const frames = Math.round((timeline.total / 1000) * fps);
   console.log(`Rendering ${frames} frames at ${fps}fps…`);
   for (let f = 0; f < frames; f++) {
     await page.evaluate(t => window.__tpl.seek(t), (f / fps) * 1000);
@@ -179,6 +197,7 @@ try {
 }
 
 console.log('Encoding MP4…');
+const videoTmp = silent ? outMp4 : path.join(framesDir, 'video.mp4');
 execFileSync(ffmpegPath(), [
   '-y',
   '-framerate', String(fps),
@@ -188,8 +207,57 @@ execFileSync(ffmpegPath(), [
   '-crf', '19',
   '-pix_fmt', 'yuv420p',
   '-movflags', '+faststart',
-  outMp4,
+  videoTmp,
 ], { stdio: ['ignore', 'ignore', 'inherit'] });
+
+/* ---------- audio: synthesized BGM/SFX + neural TTS of the phrases ---------- */
+if (!silent) {
+  console.log('Synthesizing audio…');
+  const baseWav = path.join(framesDir, 'base.wav');
+  synthBaseTrack(timeline, baseWav);
+
+  const beatOf = id => timeline.beats.find(b => b[0] === id);
+  const wanted = [
+    { text: card.q, at: beatOf('b5')[1] + 250, windowMs: beatOf('b5')[2] - beatOf('b5')[1] - 400 },
+    { text: card.a, at: beatOf('b6')[1] + 350, windowMs: beatOf('b7')[2] - beatOf('b6')[1] - 800 },
+  ];
+  const clips = [];
+  for (const [i, c] of wanted.entries()) {
+    try {
+      const f = path.join(framesDir, `tts${i}.mp3`);
+      execFileSync('edge-tts', ['--voice', 'en-US-JennyNeural', '--rate=-5%',
+        '--text', c.text, '--write-media', f], { stdio: 'ignore', timeout: 60000 });
+      const dur = mediaDurationMs(f);
+      const tempo = Math.min(1.35, Math.max(1, dur / c.windowMs));
+      clips.push({ file: f, at: c.at, tempo });
+    } catch {
+      console.warn(`  (TTS unavailable for "${c.text.slice(0, 30)}…" — continuing without it)`);
+    }
+  }
+
+  const mixWav = path.join(framesDir, 'mix.wav');
+  if (clips.length) {
+    // note: the bundled ffmpeg is 4.x — amix has no `normalize` option, and a
+    // stream ending mid-mix causes gain pumping. apad keeps every input alive
+    // for duration=first, and a fixed post-gain undoes amix's 1/n scaling.
+    const nIn = clips.length + 1;
+    const inputs = clips.flatMap(c => ['-i', c.file]);
+    const parts = clips.map((c, i) =>
+      `[${i + 1}:a]atempo=${c.tempo.toFixed(3)},volume=1.5,adelay=${c.at}|${c.at},apad[c${i}]`);
+    const filter = parts.join(';') + ';[0:a]' + clips.map((_, i) => `[c${i}]`).join('') +
+      `amix=inputs=${nIn}:duration=first:dropout_transition=0[m];` +
+      `[m]volume=${nIn},alimiter=limit=0.95[mix]`;
+    execFileSync(ffmpegPath(), ['-y', '-i', baseWav, ...inputs,
+      '-filter_complex', filter, '-map', '[mix]', '-ar', '44100', mixWav],
+      { stdio: ['ignore', 'ignore', 'inherit'] });
+  } else {
+    fs.copyFileSync(baseWav, mixWav);
+  }
+
+  execFileSync(ffmpegPath(), ['-y', '-i', videoTmp, '-i', mixWav,
+    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', outMp4],
+    { stdio: ['ignore', 'ignore', 'inherit'] });
+}
 
 fs.writeFileSync(outTxt, buildCaption(card));
 fs.rmSync(framesDir, { recursive: true, force: true });
