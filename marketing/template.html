@@ -166,17 +166,17 @@
  * Loop design: frame at t=0 and frame at t=TOTAL are both a white flash, so the
  * video loops seamlessly (flash-cut). */
 const BEATS = [
-  ['b1',    0, 1100],
-  ['b2', 1100, 3000],
-  ['b3', 3000, 4800],
-  ['b4', 4800, 7000],
-  ['b5', 7000, 8800],
-  ['b6', 8800, 10600],
-  ['b7', 10600, 12000],
-  ['b8', 12000, 13600],
-  ['b9', 13600, 15000],
+  ['b1',    0,  1400],   // hook slam (snappy)
+  ['b2', 1400,  5000],   // JP phrase — reading time
+  ['b3', 5000,  8000],   // countdown, a full second per digit — thinking time
+  ['b4', 8000, 11200],   // answer, word by word
+  ['b5', 11200, 14400],  // answer settled EN+JP — reading time
+  ['b6', 14400, 17000],  // patient reply EN
+  ['b7', 17000, 19400],  // patient reply JP + framework
+  ['b8', 19400, 21400],  // CTA
+  ['b9', 21400, 22800],  // loop bridge
 ];
-const TOTAL = 15000;
+const TOTAL = 22800;
 
 /* ---------- easing library: linear motion is banned ---------- */
 const clamp01 = x => Math.max(0, Math.min(1, x));
@@ -331,22 +331,23 @@ function seek(t){
     fade(q('#b2 .sub'), win(lt, 900, 260), 20);
   }
   if (active === 'b3') {
-    const idx = Math.min(2, Math.floor(lt / 600));
+    const digitDur = (e0 - s0) / 3;
+    const idx = Math.min(2, Math.floor(lt / digitDur));
     const colors = [['var(--red)', 'var(--paper)'], ['var(--ink)', 'var(--paper)'], ['var(--paper)', 'var(--ink)']];
     const c = document.getElementById('countEl');
     c.style.background = colors[idx][0];
     c.style.color = colors[idx][1];
     const n = document.getElementById('countN');
     n.textContent = 3 - idx;
-    const p = expoOut(win(lt % 600, 0, 260));
+    const p = expoOut(win(lt % digitDur, 0, 300));
     n.style.transform = 'scale(' + (1.45 - 0.45 * p) + ')';
   }
   if (active === 'b4') {
     fade(q('#b4 .tag'), win(lt, 0, 200), 0);
     const words = document.querySelectorAll('#b4 .w');
-    const stagger = Math.min(150, 1300 / words.length);
-    // quantize word pops to the beat grid, leaving 450ms of read time before the cut
-    const grid = gridTimes(s0 + 150, words.length, e0 - 450);
+    const stagger = Math.min(220, 2000 / words.length);
+    // quantize word pops to the beat grid, leaving read time before the cut
+    const grid = gridTimes(s0 + 150, words.length, e0 - 800);
     words.forEach((w, i) => {
       const at = grid ? grid[i] - s0 : 200 + i * stagger;
       const p = easeOutBack(win(lt, at, 300));
