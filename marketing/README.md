@@ -41,10 +41,26 @@ EMS English Trainer の集客用ショート動画(1080×1920・約20秒)を、
 ```bash
 cd marketing
 npm install
-node generate.mjs                    # 今日の動画 → output/YYYY-MM-DD.mp4
+node generate.mjs                    # 今日の動画 → output/YYYY-MM-DD.mp4（60fps）
 node generate.mjs --date 2026-07-10  # 日付指定
 node generate.mjs --index 42         # フレーズを番号で指定
+node generate.mjs --fps 30           # フレームレート変更（既定は60）
 ```
+
+### ビートシンク（音源に合わせてカットを同期）
+
+投稿時に使う音源が決まっている場合、ビートのタイミングを渡すと
+**シーンの切り替え・単語のポップがビートに吸着**し、ビートごとに
+画面が微かにキックします（音ハメ動画になる）。
+
+```bash
+node generate.mjs --bpm 104                    # BPM指定（一定間隔のビートグリッド）
+node generate.mjs --bpm 104 --beat-offset 0.35 # 最初のビートが0.35秒目にある場合
+node generate.mjs --beats beats.json           # 秒単位のタイムスタンプ配列を直接渡す
+```
+
+`beats.json` は `[0.0, 0.58, 1.16, ...]` のような秒の配列です。
+Pythonの `librosa.beat.beat_track` などで音源から自動抽出できます。
 
 - 見た目(色・文言・レイアウト)は `template.html` を編集
 - 尺やシーン構成は `template.html` の `T`(タイムライン)を編集

@@ -178,11 +178,58 @@ const BEATS = [
 ];
 const TOTAL = 15000;
 
+/* ---------- easing library: linear motion is banned ---------- */
 const clamp01 = x => Math.max(0, Math.min(1, x));
-const expoOut = p => p >= 1 ? 1 : 1 - Math.pow(2, -10 * p);
-const backOut = p => { const c = 1.70158 + 1; return 1 + c * Math.pow(p - 1, 3) + (c - 1) * Math.pow(p - 1, 2); };
+const easeOutExpo   = p => p >= 1 ? 1 : 1 - Math.pow(2, -10 * p);
+const easeOutBack   = p => { const c = 1.70158 + 1; return 1 + c * Math.pow(p - 1, 3) + (c - 1) * Math.pow(p - 1, 2); };
+const easeOutCubic  = p => 1 - Math.pow(1 - p, 3);
+const easeInOutCubic= p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+const easeInOutSine = p => -(Math.cos(Math.PI * p) - 1) / 2;
+const expoOut = easeOutExpo, backOut = easeOutBack;
 /* progress of a window */
 const win = (t, s, d) => clamp01((t - s) / d);
+
+/* ---------- beat sync ----------
+ * setup() may receive beatsMs (timestamps of the backing track's beats).
+ * Scene cuts snap onto the nearest beat, kinetic word pops land on half-beats,
+ * and beatPulse() drives a decaying scale kick on every beat. */
+let BEAT_TIMES = null;
+function applyBeatGrid(beats){
+  BEAT_TIMES = beats.filter(b => b > 0 && b < TOTAL - 400).sort((a, b) => a - b);
+  if (!BEAT_TIMES.length) { BEAT_TIMES = null; return; }
+  for (let i = 1; i < BEATS.length; i++) {           // snap each cut to a beat
+    const target = BEATS[i][1];
+    let best = null, bd = 351;
+    for (const b of BEAT_TIMES) { const d = Math.abs(b - target); if (d < bd) { bd = d; best = b; } }
+    if (best !== null) { BEATS[i][1] = best; BEATS[i - 1][2] = best; }
+  }
+  for (let i = 1; i < BEATS.length; i++) {           // keep cuts monotonic, >=500ms apart
+    if (BEATS[i][1] < BEATS[i - 1][1] + 500) { BEATS[i][1] = BEATS[i - 1][1] + 500; BEATS[i - 1][2] = BEATS[i][1]; }
+  }
+}
+function beatPulse(t){
+  if (!BEAT_TIMES) return 0;
+  let last = -1e9;
+  for (const b of BEAT_TIMES) { if (b <= t) last = b; else break; }
+  return Math.exp(-(t - last) / 110);
+}
+/* `count` grid points inside [from, until] for quantized text pops.
+ * Tries half-beats first, then quarter- and eighth-notes, so every word
+ * still lands on a musical subdivision even in a short scene. */
+function gridTimes(from, count, until){
+  if (!BEAT_TIMES || BEAT_TIMES.length < 2) return null;
+  for (const div of [2, 4, 8]) {
+    const pts = [];
+    for (let i = 0; i < BEAT_TIMES.length - 1; i++) {
+      const step = (BEAT_TIMES[i + 1] - BEAT_TIMES[i]) / div;
+      for (let k = 0; k < div; k++) pts.push(BEAT_TIMES[i] + k * step);
+    }
+    pts.push(BEAT_TIMES[BEAT_TIMES.length - 1]);
+    const usable = pts.filter(p => p >= from && p <= until);
+    if (usable.length >= count) return usable.slice(0, count);
+  }
+  return null;
+}
 
 function setup(p){
   // split the JP phrase into masked lines for staggered reveal,
@@ -215,6 +262,7 @@ function setup(p){
   document.getElementById('chipEl').innerHTML =
     '<b>' + esc(p.framework) + '</b>｜' + esc(p.stepWord) + '（' + esc(p.sceneTitle) + '）';
   if (p.iconSrc) document.getElementById('ctaIcon').src = p.iconSrc;
+  if (Array.isArray(p.beatsMs) && p.beatsMs.length) applyBeatGrid(p.beatsMs);
   document.title = 'ready';
 }
 function esc(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -248,6 +296,15 @@ function seek(t){
   const z = 1.04 + 0.035 * Math.cos(2 * Math.PI * t / TOTAL);
   document.getElementById('bgEl').style.transform = 'scale(' + z + ')';
 
+  /* Ken Burns: the active scene drifts from 1.00 to ~1.03 across its whole
+     duration, plus a decaying kick on every music beat — no frame is static */
+  if (active) {
+    const kb = 1
+      + 0.03 * easeInOutSine(clamp01(lt / (e0 - s0)))
+      + 0.012 * beatPulse(t);
+    document.getElementById(active).style.transform = 'scale(' + kb + ')';
+  }
+
   /* white flash: decays from t=0, rises into t=TOTAL (seamless loop),
      plus a micro-flash on the answer cut */
   const start = 1 - expoOut(win(t, 0, 260));
@@ -261,7 +318,7 @@ function seek(t){
     const sc = 1.9 - 0.9 * backOut(p);
     const shake = (1 - win(lt, 380, 320)) * 13 * Math.sin(lt * 0.11);
     const el = document.getElementById('slamEl');
-    el.style.opacity = win(lt, 40, 80);
+    el.style.opacity = easeOutCubic(win(lt, 40, 80));
     el.style.transform = 'scale(' + sc + ') translateX(' + shake + 'px)';
     fade(q('#b1 .under'), win(lt, 520, 260), 24);
   }
@@ -288,9 +345,12 @@ function seek(t){
     fade(q('#b4 .tag'), win(lt, 0, 200), 0);
     const words = document.querySelectorAll('#b4 .w');
     const stagger = Math.min(150, 1300 / words.length);
+    // quantize word pops to the beat grid, leaving 450ms of read time before the cut
+    const grid = gridTimes(s0 + 150, words.length, e0 - 450);
     words.forEach((w, i) => {
-      const p = backOut(win(lt, 200 + i * stagger, 300));
-      w.style.opacity = win(lt, 200 + i * stagger, 120);
+      const at = grid ? grid[i] - s0 : 200 + i * stagger;
+      const p = easeOutBack(win(lt, at, 300));
+      w.style.opacity = easeOutCubic(win(lt, at, 120));
       w.style.transform = 'scale(' + (0.5 + 0.5 * p) + ')';
     });
   }

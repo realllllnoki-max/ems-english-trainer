@@ -11,7 +11,10 @@
  *   node generate.mjs                     # today's video -> output/YYYY-MM-DD.mp4
  *   node generate.mjs --date 2026-07-10   # a specific day
  *   node generate.mjs --index 42          # force a specific phrase card
- *   node generate.mjs --fps 30 --out path/to/video.mp4
+ *   node generate.mjs --fps 60 --out path/to/video.mp4
+ *   node generate.mjs --bpm 104           # sync cuts/pops to a 104 BPM track
+ *   node generate.mjs --bpm 104 --beat-offset 0.35   # first beat at 0.35s
+ *   node generate.mjs --beats beats.json  # explicit beat timestamps (seconds)
  */
 import { chromium } from 'playwright-core';
 import { execFileSync } from 'node:child_process';
@@ -24,7 +27,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.dirname(HERE);
-const FPS_DEFAULT = 30;
+const FPS_DEFAULT = 60;
 const FONT_PATH = path.join(HERE, 'assets', 'NotoSansJP.ttf');
 const FONT_URL = 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf';
 
@@ -37,6 +40,26 @@ function arg(name, fallback) {
 const dateStr = arg('date', new Date().toISOString().slice(0, 10));
 const fps = Number(arg('fps', FPS_DEFAULT));
 const forcedIndex = arg('index', null);
+
+/* beat map for music sync: --beats file.json (array of seconds, e.g. from
+ * librosa.beat.beat_track) or --bpm N [--beat-offset seconds] for a fixed grid */
+function loadBeatsMs() {
+  const beatsFile = arg('beats', null);
+  if (beatsFile) {
+    return JSON.parse(fs.readFileSync(beatsFile, 'utf8')).map(s => Math.round(s * 1000));
+  }
+  const bpm = arg('bpm', null);
+  if (bpm) {
+    const step = 60000 / Number(bpm);
+    const offset = Number(arg('beat-offset', 0)) * 1000;
+    const beats = [];
+    for (let b = offset; b < 20000; b += step) beats.push(Math.round(b));
+    return beats;
+  }
+  return null;
+}
+const beatsMs = loadBeatsMs();
+if (beatsMs) console.log(`Beat sync: ${beatsMs.length} beats loaded`);
 
 /* ---------- load phrase cards from the app's own data ---------- */
 function loadCards() {
@@ -132,7 +155,7 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 1080, height: 1920 } });
   await page.goto(pathToFileURL(path.join(HERE, 'template.html')).href);
-  await page.evaluate(p => window.__tpl.setup(p), { ...card, iconSrc });
+  await page.evaluate(p => window.__tpl.setup(p), { ...card, iconSrc, beatsMs });
   await page.evaluate(() => document.fonts.ready);
 
   const total = await page.evaluate(() => window.__tpl.TOTAL);
