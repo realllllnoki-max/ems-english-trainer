@@ -364,7 +364,7 @@ function renderMenuBody(){
   renderProgress();
   if(activeMode==="test"){
     chipsBar.classList.add("hide");grid.classList.add("hide");mic.classList.add("hide");
-    lead.innerHTML=`<div class="test-intro"><h3>⚡ 実戦テストモード</h3><p>ランダムな5シナリオから1問ずつ、計5問に挑戦。判定をスキップせず、本番のように一気に解きます。</p><button class="b3 b3-white b3-lg" id="startTest" style="color:var(--blue-dark)">テストを始める（5問）</button></div>`;
+    lead.innerHTML=`<div class="test-intro"><h3>⚡ 実戦テストモード</h3><p>ランダムな5シナリオから1問ずつ、計5問に挑戦。今の実力を確かめて、成長を実感しよう。続けるほどスコアも自信も伸びていきます。</p><button class="b3 b3-white b3-lg" id="startTest" style="color:var(--blue-dark)">テストを始める（5問）</button></div>`;
     $("#startTest").onclick=()=>{FX.tap();startTest();};
     return;
   }
