@@ -145,6 +145,10 @@ const outTxt = outMp4.replace(/\.mp4$/, '.txt');
 
 const iconFile = path.join(REPO, 'icon-192.png');
 const iconSrc = 'data:image/png;base64,' + fs.readFileSync(iconFile).toString('base64');
+const mascotFile = path.join(HERE, 'assets', 'mascot.png');
+const mascotSrc = fs.existsSync(mascotFile)
+  ? 'data:image/png;base64,' + fs.readFileSync(mascotFile).toString('base64')
+  : null;
 
 const framesDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reel-frames-'));
 
@@ -155,7 +159,7 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ viewport: { width: 1080, height: 1920 } });
   await page.goto(pathToFileURL(path.join(HERE, 'template.html')).href);
-  await page.evaluate(p => window.__tpl.setup(p), { ...card, iconSrc, beatsMs });
+  await page.evaluate(p => window.__tpl.setup(p), { ...card, iconSrc, mascotSrc, beatsMs });
   await page.evaluate(() => document.fonts.ready);
 
   const total = await page.evaluate(() => window.__tpl.TOTAL);
