@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>EMS English Trainer — Daily Reel Template</title>
+<style>
+  @font-face{
+    font-family:"Noto Sans JP";
+    src:url("assets/NotoSansJP.ttf") format("truetype");
+    font-weight:100 900;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1080px;height:1920px;overflow:hidden;background:#0b1220}
+  body{
+    font-family:"Noto Sans JP","Noto Color Emoji",sans-serif;
+    color:#f2f6ff;
+    position:relative;
+  }
+  /* ---------- backdrop ---------- */
+  .bg{position:absolute;inset:0;background:linear-gradient(165deg,#0b1220 0%,#0f1c38 45%,#1c1030 100%)}
+  .glow{position:absolute;border-radius:50%;filter:blur(140px);opacity:.55}
+  .glow.red{width:760px;height:760px;background:#e0243d;top:-260px;right:-280px;opacity:.28}
+  .glow.cyan{width:820px;height:820px;background:#1d7fd6;bottom:-320px;left:-320px;opacity:.30}
+  .grid{position:absolute;inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+    background-size:120px 120px}
+  /* ---------- persistent chrome ---------- */
+  .progress{position:absolute;top:0;left:0;height:14px;background:linear-gradient(90deg,#ff4d5e,#ffb14d);width:0%;z-index:50}
+  .brandbar{position:absolute;top:64px;left:0;right:0;display:flex;justify-content:center;z-index:40}
+  .brandbar .pill{
+    display:flex;align-items:center;gap:18px;
+    background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.16);
+    border-radius:999px;padding:18px 44px;font-size:38px;font-weight:700;letter-spacing:.04em}
+  .brandbar .dot{width:18px;height:18px;border-radius:50%;background:#ff4d5e}
+  /* ---------- scenes ---------- */
+  .scene{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;
+    padding:0 90px;text-align:center;visibility:hidden}
+  .scene.on{visibility:visible}
+
+  .kicker{font-size:44px;font-weight:800;letter-spacing:.18em;color:#ffb14d;margin-bottom:48px}
+  .hook-jp{font-size:88px;font-weight:900;line-height:1.35}
+  .hook-jp .quote{color:#7dd3ff}
+  .hook-sub{margin-top:64px;font-size:52px;font-weight:700;color:#ffd28a}
+
+  .count-num{font-size:320px;font-weight:900;line-height:1;color:#ffffff}
+  .count-label{margin-top:40px;font-size:54px;font-weight:700;color:#9fb4d8}
+
+  .ans-label{font-size:44px;font-weight:800;letter-spacing:.16em;color:#7dd3ff;margin-bottom:44px}
+  .ans-en{font-size:92px;font-weight:900;line-height:1.28;color:#ffffff}
+  .ans-en .hl{color:#ffb14d}
+  .ans-jp{margin-top:52px;font-size:52px;font-weight:600;color:#b9c7e4;line-height:1.5}
+  .tagchip{margin-top:72px;display:inline-flex;align-items:center;gap:16px;
+    background:rgba(125,211,255,.12);border:2px solid rgba(125,211,255,.35);
+    border-radius:999px;padding:16px 40px;font-size:38px;font-weight:700;color:#7dd3ff}
+
+  .reply-label{font-size:44px;font-weight:800;letter-spacing:.12em;color:#ff9daa;margin-bottom:56px}
+  .bubble{max-width:880px;background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.18);
+    border-radius:44px;padding:56px 60px;text-align:left}
+  .bubble .en{font-size:64px;font-weight:800;line-height:1.35;color:#fff}
+  .bubble .jp{margin-top:30px;font-size:42px;font-weight:600;color:#b9c7e4;line-height:1.5}
+  .bubble.q{border-color:rgba(125,211,255,.4);background:rgba(125,211,255,.10);margin-bottom:44px}
+  .bubble.q .en{color:#bfe6ff;font-size:52px}
+
+  .cta-icon{width:280px;height:280px;border-radius:64px;box-shadow:0 30px 80px rgba(0,0,0,.5);margin-bottom:56px}
+  .cta-name{font-size:76px;font-weight:900;letter-spacing:.02em}
+  .cta-desc{margin-top:36px;font-size:48px;font-weight:600;color:#b9c7e4;line-height:1.6}
+  .cta-link{margin-top:80px;display:inline-flex;align-items:center;gap:20px;
+    background:linear-gradient(90deg,#ff4d5e,#ff8a4d);border-radius:999px;
+    padding:34px 64px;font-size:50px;font-weight:800;color:#fff}
+  .cta-follow{margin-top:56px;font-size:42px;font-weight:700;color:#ffd28a}
+</style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="glow red"></div>
+  <div class="glow cyan"></div>
+  <div class="grid"></div>
+  <div class="progress" id="progress"></div>
+  <div class="brandbar"><div class="pill"><span class="dot"></span><span id="brandText">救急英語 きょうの1フレーズ</span></div></div>
+
+  <!-- A: hook -->
+  <section class="scene" id="sceneA">
+    <div class="kicker" data-fx="1">🚑 救急隊員のあなたへ</div>
+    <div class="hook-jp" data-fx="1"><span class="quote">「<span id="hookJp"></span>」</span><br>英語で言えますか？</div>
+    <div class="hook-sub" data-fx="1">現場で必ず使うひとことです</div>
+  </section>
+
+  <!-- B: countdown -->
+  <section class="scene" id="sceneB">
+    <div class="count-num" id="countNum">3</div>
+    <div class="count-label">声に出して言ってみて</div>
+  </section>
+
+  <!-- C: answer -->
+  <section class="scene" id="sceneC">
+    <div class="ans-label" data-fx="1">ANSWER ✅</div>
+    <div class="ans-en" id="ansEn" data-fx="1"></div>
+    <div class="ans-jp" id="ansJp" data-fx="1"></div>
+    <div><span class="tagchip" id="ansTag" data-fx="1"></span></div>
+  </section>
+
+  <!-- D: patient reply -->
+  <section class="scene" id="sceneD">
+    <div class="reply-label" data-fx="1">🗣️ 患者さんはこう答えます</div>
+    <div class="bubble q" data-fx="1"><div class="en" id="replyQ"></div></div>
+    <div class="bubble" data-fx="1">
+      <div class="en" id="replyEn"></div>
+      <div class="jp" id="replyJp"></div>
+    </div>
+  </section>
+
+  <!-- E: CTA -->
+  <section class="scene" id="sceneE">
+    <img class="cta-icon" id="ctaIcon" alt="" data-fx="1">
+    <div class="cta-name" data-fx="1">EMS English Trainer</div>
+    <div class="cta-desc" data-fx="1">救急隊のための英語問診トレーナー<br>発音をAIが自動判定。毎日1分で現場英語。</div>
+    <div class="cta-link" data-fx="1">🔗 プロフィールのリンクから</div>
+    <div class="cta-follow" data-fx="1">フォローして毎日1フレーズ🔥</div>
+  </section>
+
+<script>
+/* Deterministic, seekable animation: the generator calls seek(ms) then screenshots. */
+const T = {
+  A: [0, 3400],
+  B: [3400, 6400],
+  C: [6400, 12800],
+  D: [12800, 16600],
+  E: [16600, 20000],
+};
+const TOTAL = T.E[1];
+
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+function easeOut(x){ return 1 - Math.pow(1 - x, 3); }
+
+let PAYLOAD = null;
+
+function setup(payload){
+  PAYLOAD = payload;
+  document.getElementById('hookJp').textContent = payload.qjp;
+  // highlight the first ~2 words of the English phrase
+  const words = payload.q.split(' ');
+  const nHl = Math.min(2, words.length);
+  document.getElementById('ansEn').innerHTML =
+    '<span class="hl">' + esc(words.slice(0, nHl).join(' ')) + '</span> ' +
+    esc(words.slice(nHl).join(' '));
+  document.getElementById('ansJp').textContent = payload.qjp;
+  document.getElementById('ansTag').textContent = '📋 ' + payload.framework + '｜' + payload.stepWord + '（' + payload.sceneTitle + '）';
+  document.getElementById('replyQ').textContent = payload.q;
+  document.getElementById('replyEn').textContent = payload.a;
+  document.getElementById('replyJp').textContent = payload.ajp;
+  if (payload.iconSrc) document.getElementById('ctaIcon').src = payload.iconSrc;
+  if (payload.brandText) document.getElementById('brandText').textContent = payload.brandText;
+  document.title = 'ready';
+}
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+function fxIn(el, t, start, dur, dy){
+  const p = easeOut(clamp01((t - start) / dur));
+  el.style.opacity = p;
+  el.style.transform = 'translateY(' + ((1 - p) * (dy || 40)) + 'px)';
+}
+
+function seek(t){
+  document.getElementById('progress').style.width = (clamp01(t / TOTAL) * 100) + '%';
+  for (const [id, [s, e]] of Object.entries(T)) {
+    const el = document.getElementById('scene' + id);
+    el.classList.toggle('on', t >= s && t < e);
+  }
+  // staggered entrances inside the active scene
+  for (const [id, [s]] of Object.entries(T)) {
+    const el = document.getElementById('scene' + id);
+    if (!el.classList.contains('on')) continue;
+    const items = el.querySelectorAll('[data-fx]');
+    items.forEach((item, i) => fxIn(item, t, s + 120 + i * 340, 620, 46));
+  }
+  // countdown digits
+  if (t >= T.B[0] && t < T.B[1]) {
+    const local = t - T.B[0];
+    const n = 3 - Math.min(2, Math.floor(local / 1000));
+    const el = document.getElementById('countNum');
+    el.textContent = n;
+    const p = easeOut(clamp01((local % 1000) / 380));
+    el.style.transform = 'scale(' + (0.55 + 0.45 * p) + ')';
+    el.style.opacity = p;
+  }
+}
+
+window.__tpl = { setup, seek, TOTAL };
+</script>
+</body>
+</html>

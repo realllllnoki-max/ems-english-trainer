@@ -1,0 +1,64 @@
+name: Daily marketing video
+
+on:
+  schedule:
+    # 22:00 UTC = 07:00 JST — the video is ready before the morning commute
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date for the video (YYYY-MM-DD, default: today)'
+        required: false
+      index:
+        description: 'Force a specific phrase card index'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: marketing/package-lock.json
+
+      - name: Install emoji fonts
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-color-emoji
+
+      - name: Install dependencies
+        working-directory: marketing
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: marketing
+        run: npx --yes playwright@1.61.1 install --with-deps chromium
+
+      - name: Generate video
+        working-directory: marketing
+        run: |
+          ARGS=""
+          [ -n "${{ inputs.date }}" ] && ARGS="$ARGS --date ${{ inputs.date }}"
+          [ -n "${{ inputs.index }}" ] && ARGS="$ARGS --index ${{ inputs.index }}"
+          node generate.mjs $ARGS
+
+      - name: Upload as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-reel
+          path: marketing/output/*
+
+      - name: Publish to the daily-videos release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view daily-videos --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create daily-videos --repo "$GITHUB_REPOSITORY" \
+              --title "Daily marketing videos" \
+              --notes "毎朝7時(JST)に自動生成されるTikTok/Instagramリール動画。mp4が動画、txtが投稿用キャプションです。"
+          gh release upload daily-videos marketing/output/* --repo "$GITHUB_REPOSITORY" --clobber

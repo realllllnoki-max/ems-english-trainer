@@ -1,0 +1,14 @@
+{
+  "name": "ems-english-trainer-marketing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Daily TikTok / Instagram Reel generator for EMS English Trainer",
+  "type": "module",
+  "scripts": {
+    "generate": "node generate.mjs"
+  },
+  "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "playwright-core": "^1.61.1"
+  }
+}
