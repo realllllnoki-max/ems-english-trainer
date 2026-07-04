@@ -119,9 +119,15 @@
 
   function baseUrl() { return location.origin + location.pathname; }
 
+  function agreed() {
+    var chk = $("payAgreeChk");
+    return !!(chk && chk.checked);
+  }
+
   var _checkoutBusy = false; // 二重Checkout防止
   async function startCheckout() {
     if (_checkoutBusy) return;
+    if (!agreed()) { setPayMsg("利用規約とプライバシーポリシーへの同意が必要です", "err"); return; }
     var a = auth();
     if (!a || !a.client) { setPayMsg("ログイン機能を読み込めませんでした", "err"); return; }
     var go = $("payGo"), goOld = go ? go.textContent : "";
@@ -281,6 +287,8 @@
     var ov = $("payOv"); if (ov) ov.addEventListener("click", function (e) { if (e.target === ov) closePay(); });
     wirePlanOpts();
     var go = $("payGo"); if (go) go.onclick = startCheckout;
+    var agreeChk = $("payAgreeChk");
+    if (agreeChk && go) agreeChk.onchange = function () { go.disabled = !agreeChk.checked; };
     var free = $("payFree"); if (free) free.onclick = function () {
       closePay();
       var f = freeScene();

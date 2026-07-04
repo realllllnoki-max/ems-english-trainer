@@ -651,6 +651,9 @@
   .auth-msg{font-size:.82rem;font-weight:800;margin:2px 2px 12px;min-height:1.1em;line-height:1.4}
   .auth-msg.err{color:var(--red-dark)}
   .auth-msg.ok{color:var(--green-dark)}
+  .pay-agree{display:flex;align-items:flex-start;gap:8px;font-size:.8rem;font-weight:700;color:var(--ink-soft);line-height:1.4;margin:2px 2px 14px;cursor:pointer}
+  .pay-agree input{margin-top:2px;width:16px;height:16px;flex:0 0 auto}
+  .pay-agree a{color:var(--blue-dark);text-decoration:underline}
   .auth-acct-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:.9rem;color:var(--ink-soft);word-break:break-all}
   /* ===== Scenario card free/lock flags ===== */
   .card-s .lockflag{position:absolute;top:8px;left:8px;z-index:2;font-size:.6rem;font-weight:900;letter-spacing:.05em;padding:3px 7px;border-radius:6px}
@@ -832,8 +835,12 @@
         <span class="po-p">9,800円<small>/年</small></span>
       </button>
     </div>
+    <label class="pay-agree" for="payAgreeChk">
+      <input type="checkbox" id="payAgreeChk">
+      <span><a href="terms.html" target="_blank" rel="noopener">利用規約</a>と<a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意します</span>
+    </label>
     <div class="auth-msg" id="payMsg"></div>
-    <button class="b3 b3-green b3-lg" id="payGo" type="button">このプランで続ける</button>
+    <button class="b3 b3-green b3-lg" id="payGo" type="button" disabled>このプランで続ける</button>
   </div>
 </div>
 
@@ -853,7 +860,7 @@
 <script src="ems-app.js?v=4"></script>
 <script src="ems-auth.js?v=4"></script>
 <script src="ems-sync.js?v=4"></script>
-<script src="ems-paywall.js?v=4"></script>
+<script src="ems-paywall.js?v=5"></script>
 <script src="ems-pwa.js?v=4"></script>
 </body>
 </html>

@@ -138,12 +138,12 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 
 ## 5. 作業ステップ（実装順）
 
-> 各ステップは独立して動作確認できる粒度に分割。すべて **Stripe テストモード** で進める。
+> 各ステップは独立して動作確認できる粒度に分割。開発・検証は **Stripe テストモード** で進め、2026-07-04 に **本番（Live）モードへ移行済み**。
 
 ### Step 1. 環境準備（コードなし）
 - [x] **Supabase プロジェクト作成済み**（Free / 東京リージョン）
-- [ ] Stripe アカウント作成 → **テストモード**の Publishable / Secret キー取得
-- [ ] フロント配信先の決定（GitHub Pages 継続 or Cloudflare Pages。どちらも無料・商用OK）※新規アカウント・追加費用は不要
+- [x] Stripe アカウント（既存アカウントに相乗り）→ テストモードのキー取得 → **本番キーへ移行済み**（2026-07-04）
+- [x] フロント配信先の決定 → **GitHub Pages** で継続
 
 > **作成済み Supabase プロジェクト情報（フロント設定で使う・公開して安全な値）**
 > - プロジェクト名: `ems-english-trainer` / ref: `widfjtfhqjpnjdfsnlnx` / Region: ap-northeast-1（東京）/ プラン: Free
@@ -196,6 +196,7 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - [x] シークレット設定（Supabase Dashboard → Edge Functions → Secrets）:
   `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_ID` ✅
 - [x] **サーバー検証済み**: 実JWTで `create-checkout-session` を叩き、本物の Stripe Checkout URL を生成（キー＋price_id 正当性を確認）。`stripe-webhook` は署名検証が稼働（偽署名で400）
+- [x] **本番（Live）移行完了**（2026-07-04）: 本番の制限付きキー・商品・3価格（月額/6ヶ月/1年）・Webhookエンドポイントを作成し、Supabaseの5シークレットを本番値に差し替え済み。カスタマーポータルの解約機能も本番で有効化済み。読み取り専用で全項目を最終検証（`livemode: true`・金額/周期一致・Webhook有効・ポータル`cancel_enabled: true`）
 
 ### Step 7. フロントのロック/解放 ✅ 完了
 - [x] ログイン後 `profiles.is_pro` を取得（`ems-auth.js`: `EMSAuth.refreshPro` → `window.EMS_PRO`＋`ems-pro-change`イベント）
@@ -233,9 +234,9 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - [x] サインアップ → 無料範囲が使える（公開URLで確認）
 - [x] 無料状態で Lv1の1問目は解ける／他はペイウォール（🔒/無料バッジ表示）
 - [x] **テストカード `4242...` で決済 → `is_pro=true` → 全解放**（DB確認: is_pro=true, stripe_customer_id, current_period_end）✅
-- [ ] 解約テスト（既定は「期間末解約」→ 期間末に `customer.subscription.deleted` で `is_pro=false`。即時ロックにはならない＝正しい挙動）
-- [ ] 機種変想定（別ブラウザでログイン）→ 進捗が復元される
-- [ ] スマホで「ホーム画面に追加」→ アプリ風に起動できる（PWA確認）
+- [x] 解約テスト（2026-07-04・API検証）: Stripeテストモードで `cancel_at_period_end=true` にしても `is_pro=true` を維持（即時ロックなし）→ 実キャンセルで `customer.subscription.deleted` 発火 → `is_pro=false` に正しく反映
+- [x] 機種変想定（2026-07-04・API検証）: 新規セッション（ローカルデータ無し）でログイン→ `user_progress` をRLS越しに取得しクラウド側の進捗が正しく返る経路を確認。**実ブラウザでの目視確認は未実施**（サンドボックス環境が外部インターネットに未対応のため）。ご自身の端末で一度確認推奨
+- [x] PWA確認（2026-07-04・コードレビュー）: `manifest.json`/`sw.js`/`ems-pwa.js`/アイコン一式の妥当性を確認済み。**実機での「ホーム画面に追加」動作確認は未実施**、お手元のスマホでの確認推奨
 
 ---
 
@@ -246,9 +247,11 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 | `SUPABASE_URL` | フロント / Edge | 接続先 |
 | `SUPABASE_ANON_KEY` | フロント | 公開可・RLS前提 |
 | `SUPABASE_SERVICE_ROLE_KEY` | Edge のみ | Webhookで `is_pro` 更新（**絶対フロント禁止**） |
-| `STRIPE_SECRET_KEY` | Edge のみ | Checkout/Portal作成 |
+| `STRIPE_SECRET_KEY` | Edge のみ | Checkout/Portal作成（本番は制限付きキーrk_live_を使用） |
 | `STRIPE_WEBHOOK_SECRET` | Edge のみ | Webhook署名検証 |
-| `STRIPE_PRICE_ID` | Edge | 税込1200円プランの price |
+| `STRIPE_PRICE_ID` | Edge | 月額（税込1,200円）プランの price |
+| `STRIPE_PRICE_ID_6M` | Edge | 6ヶ月（税込6,000円）プランの price |
+| `STRIPE_PRICE_ID_1Y` | Edge | 1年（税込9,800円）プランの price |
 
 > サーバー専用キー（service role / Stripe secret）は**絶対にフロントへ出さない**。Edge Function 内のみ。
 
@@ -326,7 +329,7 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 - [x] 消費税の扱い → **税込1200円**（価格表示・特商法表記ともに「税込」と明記）
 - [x] アプリ下部に3ページへのリンク導線を設置（`legal.css` 共通スタイル）
 - [x] **ユーザー作業**: 各ページの プレースホルダ（事業者名・住所・連絡先・管轄・更新日）を記入済み（2026-07-03）
-- [ ] （任意）決済前に規約同意のチェックを置く
+- [x] 決済前に規約同意のチェックを設置（`payAgreeChk`、未チェックは「このプランで続ける」を無効化）
 
 → 法務3ページは記入完了。Step 10 デプロイへ進める。
 
@@ -346,10 +349,13 @@ Stripe ──(Webhook)──→ Edge Function: stripe-webhook
 
 ## 9. このフェーズの完了条件（Definition of Done）
 
-- テストモードで「サインアップ → Lv1の1問目だけ無料 → 決済 → 全解放 → 解約 → 再ロック」が一通り動く
-- 別端末ログインで学習記録が復元される
-- 特商法表記・規約・プライバシーの3ページが存在し導線がある
-- 本番URL（GitHub Pages / Cloudflare Pages）が動いている（決済は本番キー切替前のテスト状態でOK）
+- [x] テストモードで「サインアップ → Lv1の1問目だけ無料 → 決済 → 全解放 → 解約 → 再ロック」が一通り動く
+- [x] 別端末ログインで学習記録が復元される（API検証済み。実ブラウザでの目視確認は任意で推奨）
+- [x] 特商法表記・規約・プライバシーの3ページが存在し導線がある（プレースホルダ記入済み・2026-07-03）
+- [x] 本番URL（GitHub Pages）が動いている
+- [x] **本番Stripeキーへの切替完了**（2026-07-04）→ 実際のクレジットカードで課金可能な状態
+
+→ **フェーズ1の完了条件をすべて満たした。** 残るのは任意項目（Googleログイン・独自ドメイン・実機PWA確認）のみ。
 
 ---
 
