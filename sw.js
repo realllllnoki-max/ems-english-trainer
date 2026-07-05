@@ -7,7 +7,7 @@
  *   - オフライン時のみキャッシュから応答（PWAとして動き続ける）
  * これにより、デプロイ後は通常のリロードだけで常に最新版が反映される。
  * ========================================================== */
-const CACHE = "ems-cache-v4";
+const CACHE = "ems-cache-v5";
 const SHELL = [
   "./",
   "./index.html",
@@ -18,6 +18,7 @@ const SHELL = [
   "./ems-paywall.js",
   "./ems-pwa.js",
   "./manifest.json",
+  "./logo.png",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png",
