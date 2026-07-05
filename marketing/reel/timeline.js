@@ -17,10 +17,10 @@
     ['b5', 11.2, 14.4],  // answer settled EN+JP
     ['b6', 14.4, 17.0],  // patient reply EN
     ['b7', 17.0, 19.4],  // patient reply JP + framework
-    ['b8', 19.4, 21.4],  // CTA
-    ['b9', 21.4, 24.8],  // loop bridge — held long enough to read the closing copy
+    ['b8', 19.4, 23.0],  // CTA — held long enough to read the app pitch + link
+    ['b9', 23.0, 26.4],  // loop bridge — held long enough to read the closing copy
   ];
-  const TOTAL = 24.8;
+  const TOTAL = 26.4;
   const BPM = 104;
 
   // fixed beat grid — every downbeat from 0 to TOTAL

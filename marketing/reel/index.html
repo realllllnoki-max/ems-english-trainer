@@ -123,7 +123,7 @@
 </style>
 </head>
 <body>
-<div id="root" data-composition-id="reel" data-width="1080" data-height="1920" data-duration="24.8" data-fps="60">
+<div id="root" data-composition-id="reel" data-width="1080" data-height="1920" data-duration="26.4" data-fps="60">
 
   <!-- B1: hook slam + mascot bounce -->
   <section class="scene" id="b1"><div class="kb">
@@ -209,7 +209,7 @@
   </div></section>
 
   <!-- audio track (synthesized BGM/SFX + TTS, muxed by build.mjs) -->
-  <audio id="track" src="audio.wav" data-start="0" data-duration="24.8" data-track-index="20" data-volume="1"></audio>
+  <audio id="track" src="audio.wav" data-start="0" data-duration="26.4" data-track-index="20" data-volume="1"></audio>
 
   <!-- persistent overlays -->
   <div id="wm">机のいらない救急英語</div>
@@ -384,11 +384,12 @@
   /* ---- B8 CTA + shine sweep ---- */
   tl.fromTo('#mascot3', { opacity: 0, scale: 0, rotation: -4 },
       { opacity: 1, scale: 1, rotation: -4, duration: 0.42, ease: 'back.out(2)' }, at('b8') + 0.42)
-    .to('#mascot3', { rotation: 3, duration: 0.5, ease: 'sine.inOut', yoyo: true, repeat: 1 }, at('b8') + 0.9)
+    .to('#mascot3', { rotation: 3, duration: 0.5, ease: 'sine.inOut', yoyo: true, repeat: 3 }, at('b8') + 0.9)
     .from('#b8 .name', { opacity: 0, y: 30, duration: 0.24, ease: 'expo.out' }, at('b8') + 0.55)
     .from('#b8 .desc', { opacity: 0, y: 24, duration: 0.24, ease: 'expo.out' }, at('b8') + 0.7)
     .from('#b8 .link', { opacity: 0, y: 30, duration: 0.26, ease: 'back.out(1.6)' }, at('b8') + 0.86)
-    .fromTo('#b8 .link .shine', { x: -80 }, { x: 620, duration: 0.7, ease: 'power2.inOut' }, at('b8') + 1.15);
+    // shine sweeps a few times across the longer hold to keep the button alive
+    .fromTo('#b8 .link .shine', { x: -80 }, { x: 620, duration: 0.7, ease: 'power2.inOut', repeat: 2, repeatDelay: 0.9 }, at('b8') + 1.15);
 
   /* ---- B9 loop bridge ---- */
   tl.from('#b9 .big', { opacity: 0, y: 40, duration: 0.3, ease: 'expo.out' }, at('b9') + 0.3)
