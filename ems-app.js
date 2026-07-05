@@ -647,9 +647,40 @@ function finishQuiz(){
   $("#qzHome").onclick=()=>{FX.tap();$("#quiz").classList.add("hide");$("#menu").classList.remove("hide");renderMenuBody();};
 }
 
+/* ===== ブラウザ環境の検出（発音判定の可否・アプリ内ブラウザ） ===== */
+function browserEnv(){
+  const ua=navigator.userAgent||"";
+  let inapp=null;
+  if(/Line\//i.test(ua))inapp="line";
+  else if(/Instagram/i.test(ua))inapp="instagram";
+  else if(/FBAN|FBAV|FB_IAB/i.test(ua))inapp="facebook";
+  else if(/Twitter/i.test(ua))inapp="twitter";
+  return {sr:!!SR,inapp};
+}
+// 発音判定が使えない環境では、ホームの案内を「壊れているのではなく未対応」だと
+// 分かる文言に差し替える。LINEは外部ブラウザで開き直すボタンも出す。
+function updateMicNote(){
+  const el=$("#micNote");if(!el)return;
+  const env=browserEnv();
+  if(env.sr)return; // 判定が使える環境は既定の文言のまま
+  el.classList.add("warn");
+  if(env.inapp==="line"){
+    el.innerHTML=`<span style="font-size:1.3rem">⚠️</span><div><b>LINEのブラウザでは発音のAI判定が使えません。</b><br>下のボタンでブラウザで開き直すと判定できます。このままでも、お手本を聞いて進める学習モードで練習できます。<div style="margin-top:8px"><button class="mn-open" id="openExternal">ブラウザで開き直す ↗</button></div></div>`;
+    const ob=$("#openExternal");
+    if(ob)ob.onclick=()=>{track("open_external",{from:"line"});const u=new URL(location.href);u.searchParams.set("openExternalBrowser","1");location.href=u.toString();};
+  }else if(env.inapp){
+    el.innerHTML=`<span style="font-size:1.3rem">⚠️</span><div><b>アプリ内ブラウザでは発音のAI判定が使えません。</b><br>画面右上のメニューから「ブラウザで開く」を選ぶと判定できます。このままでも、お手本を聞いて進める学習モードで練習できます。</div>`;
+  }else{
+    el.innerHTML=`<span style="font-size:1.3rem">ℹ️</span><div><b>このブラウザは発音のAI判定に未対応です。</b><br>Chrome（Android・PC）なら発音を自動判定できます。このままでも、お手本を聞いて進める学習モードで練習できます。</div>`;
+  }
+}
+
 /* boot */
 (async()=>{
   await loadProgress();await loadVocabProg();await loadSrs();await loadStats();renderModes();renderMenuBody();
+  updateMicNote();
+  const env=browserEnv();
+  track("env",{sr:env.sr,inapp:env.inapp,standalone:matchMedia("(display-mode: standalone)").matches});
 })();
 
 /* ================= SPEECH ================= */
@@ -709,6 +740,22 @@ function startScene(s){
   speak(" ",1);renderNode();
 }
 function showMicPrimer(){
+  // 発音判定が使えない環境では、マイクの案内をせず
+  // 「聞いて進める学習モード」であることを最初に伝える
+  if(!SR){
+    const env=browserEnv();
+    const hint=env.inapp==="line"?"LINEではなくブラウザで開くと、発音の自動判定が使えます。"
+      :env.inapp?"アプリ内ブラウザではなく、Chromeなどで開くと発音の自動判定が使えます。"
+      :"Chrome（Android・PC）で開くと、発音の自動判定が使えます。";
+    $("#stage").innerHTML=`
+      <div class="primer"><div class="primer-ic">🎧</div><h3>聞いて話す練習から始めましょう</h3>
+        <p>このブラウザは発音のAI判定に対応していないため、お手本の音声を聞きながら自分のペースで進める学習モードで練習します。</p>
+        <p class="primer-note">${hint}</p>
+        <div class="primer-acts"><button class="b3 b3-green b3-lg" id="primerGo">練習を始める</button></div>
+      </div>`;
+    $("#primerGo").onclick=()=>{FX.tap();track("mic_primer",{choice:"no_sr"});STATS.onboarded=true;micOff=true;saveStats();renderNode();};
+    return;
+  }
   $("#stage").innerHTML=`
     <div class="primer"><div class="primer-ic">🎙️</div><h3>発音はマイクで自動判定します</h3>
       <p>英語の質問を声に出すと、AIが聞き取って「伝わるか」を判定します。次の画面でマイクの使用許可を求められたら「許可」を選んでください。</p>
