@@ -237,7 +237,7 @@ function renderProgress(){
       <button class="start-hero" id="startHero">
         <div class="sh-ic">🚑</div>
         <div class="sh-tx"><div class="sh-t">さっそく始めよう</div>
-        <div class="sh-s">いちばんやさしいシナリオから1問だけ。<br>1分で「型」の感覚がつかめます。</div></div>
+        <div class="sh-s">いちばんやさしいシナリオから1問だけ。</div></div>
         <div class="sh-go">▶</div>
       </button>`;
     $("#startHero").onclick=()=>{FX.tap();startScene(recommendNext(null)||SCENES[0]);};
@@ -374,7 +374,7 @@ function renderMenuBody(){
   }
   if(activeMode==="review"){
     chipsBar.classList.add("hide");grid.classList.add("hide");mic.classList.add("hide");
-    lead.innerHTML=`<h2>復習</h2><p>苦手なシナリオと、まちがえた単語を集中的におさらいできます。</p>${weakReviewCardHTML()}${srsCardHTML()}`;
+    lead.innerHTML=`<h2>復習</h2><p>苦手なシナリオと単語をおさらいしよう。</p>${weakReviewCardHTML()}${srsCardHTML()}`;
     const wr=$("#startWeakReview");if(wr)wr.onclick=()=>{FX.tap();activeMode="weak";browseExpanded=false;renderMenuBody();window.scrollTo(0,0);};
     const sb=$("#startSrs");if(sb)sb.onclick=()=>{FX.tap();startQuiz("__srs__");};
     return;
