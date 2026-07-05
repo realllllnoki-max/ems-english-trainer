@@ -1,6 +1,6 @@
 {
-  "name": "EMS English — 救急英語問診トレーナー",
-  "short_name": "EMS English",
+  "name": "机のいらない救急英語 — 問診トレーナー",
+  "short_name": "机のいらない救急英語",
   "description": "救急隊向けの英語問診トレーナー。OPQRSTやSAMPLEの型に沿って英語の問診を声に出して練習し、発音を自動判定します。",
   "lang": "ja",
   "start_url": ".",
