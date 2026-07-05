@@ -362,6 +362,10 @@ function renderMenuBody(){
   if(grid)grid.classList.remove("hide");
   renderNav();          // 下タブのハイライトを現在の画面に同期
   renderProgress();
+  // 免責事項・法的リンクは「記録」タブのみに表示
+  const disc=$("#disclaimer"),legal=$("#legalLinks");
+  if(disc)disc.classList.toggle("hide",activeMode!=="progress");
+  if(legal)legal.classList.toggle("hide",activeMode!=="progress");
   if(activeMode==="test"){
     chipsBar.classList.add("hide");grid.classList.add("hide");mic.classList.add("hide");
     lead.innerHTML=`<div class="test-intro"><h3>⚡ 実戦テストモード</h3><p>ランダムな5シナリオから1問ずつ、計5問に挑戦。今の実力を確かめて、成長を実感しよう。続けるほどスコアも自信も伸びていきます。</p><button class="b3 b3-white b3-lg" id="startTest" style="color:var(--blue-dark)">テストを始める（5問）</button></div>`;
