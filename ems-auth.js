@@ -1,6 +1,9 @@
 /* ================= EMS AUTH (Supabase) =================
- * メールログイン（メール＋パスワード）。Google は後から追加予定。
- * ゲストでは無料の1問をプレイ可能。有料化するときだけログイン。
+ * メールログイン（メール＋パスワード）＋ Googleログイン（OAuth）。
+ * Googleは signInWithOAuth でGoogleへページ遷移→戻ってきたURLから
+ * supabase-js がセッションを復元する（detectSessionInUrl 既定動作）。
+ * ※Supabase側で Google プロバイダの有効化が必要（GOOGLE-LOGIN-SETUP.md 参照）
+ * ゲストでは無料枠をプレイ可能。有料化するときだけログイン。
  * 公開して安全な値のみ（URL / publishable key）をここに置く。
  * service role などのサーバー専用キーは絶対に置かない。
  * ====================================================== */
@@ -76,12 +79,20 @@
     if (submitEl) submitEl.addEventListener("click", onSubmit);
     if (passEl) passEl.addEventListener("keydown", function (e) { if (e.key === "Enter") onSubmit(); });
     var so = $("authSignout"); if (so) so.addEventListener("click", doSignOut);
+    var gg = $("authGoogle"); if (gg) gg.addEventListener("click", signInWithGoogle);
 
     if (!EMSAuth.client) { renderHeader(); return; } // SDK読み込み失敗時もゲスト表示（ボタン非表示）にする
 
     // 既存セッションの復元＋状態変化の監視
     EMSAuth.client.auth.getUser().then(function (res) {
       EMSAuth.user = (res && res.data && res.data.user) || null;
+      // Googleログインからの戻りを検知して計測（リダイレクトを跨ぐためlocalStorageで橋渡し）
+      try {
+        if (localStorage.getItem(GOOGLE_FLAG)) {
+          localStorage.removeItem(GOOGLE_FLAG);
+          if (EMSAuth.user) track("auth_success", { mode: "google" });
+        }
+      } catch (e) {}
       renderHeader(); EMSAuth._emit(); refreshPro();
     });
     EMSAuth.client.auth.onAuthStateChange(function (_event, session) {
@@ -150,6 +161,31 @@
   /* ---------- 送信 ---------- */
   function track(ev, p) { try { if (window.emsTrack) window.emsTrack(ev, p); } catch (e) {} }
 
+  /* ---------- Googleログイン ---------- */
+  var GOOGLE_FLAG = "ems_google_login"; // リダイレクト前に立て、戻ってきたら計測して消す
+  function signInWithGoogle() {
+    if (!EMSAuth.client) { setMsg("ログイン機能を読み込めませんでした", "err"); return; }
+    track("auth_submit", { mode: "google", context: EMSAuth._context });
+    try { localStorage.setItem(GOOGLE_FLAG, "1"); } catch (e) {}
+    busy(true);
+    setMsg("Googleに移動しています…");
+    EMSAuth.client.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: location.origin + location.pathname }
+    }).then(function (res) {
+      // 成功時はGoogleへページ遷移するため busy は解除しない
+      if (res && res.error) {
+        busy(false);
+        try { localStorage.removeItem(GOOGLE_FLAG); } catch (e) {}
+        setMsg("Googleログインを開始できませんでした。通信環境をご確認ください", "err");
+      }
+    }).catch(function () {
+      busy(false);
+      try { localStorage.removeItem(GOOGLE_FLAG); } catch (e) {}
+      setMsg("Googleログインを開始できませんでした。通信環境をご確認ください", "err");
+    });
+  }
+
   function onSubmit() {
     if (!EMSAuth.client) return;
     var email = (emailEl.value || "").trim();
@@ -195,6 +231,7 @@
   function busy(on) {
     if (submitEl) submitEl.disabled = on;
     var so = $("authSignout"); if (so) so.disabled = on;
+    var gg = $("authGoogle"); if (gg) gg.disabled = on;
   }
   function setMsg(t, cls) {
     if (!msgEl) return;
