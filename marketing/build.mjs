@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Daily TikTok / Instagram Reel generator for EMS English Trainer,
+ * Daily TikTok / Instagram Reel generator for 机のいらない救急英語,
  * built on HyperFrames (HTML -> deterministic MP4).
  *
  * Pipeline:
@@ -196,7 +196,7 @@ function buildCaption(card) {
     `✅ ${card.q}`,
     `🗣️ 患者さんの答え: ${card.a}（${card.ajp}）`, '',
     '現場で使う英語問診を毎日1フレーズ。',
-    'アプリ「EMS English Trainer」なら、AIの発音判定つきで声に出して練習できます。',
+    'アプリ「机のいらない救急英語」なら、AIの発音判定つきで声に出して練習できます。',
     '👉 プロフィールのリンクから（ブラウザだけで動きます）', '',
     '#救急救命士 #救急隊員 #消防士 #救急外来 #医療英語 #英語学習 #救急英語 #勉強垢 #paramedic #EMT',
   ].join('\n');
@@ -250,7 +250,6 @@ if (shell) env.PRODUCER_HEADLESS_SHELL_PATH = shell;
 
 const variables = JSON.stringify({
   q: card.q, qjp: card.qjp, a: card.a, ajp: card.ajp,
-  framework: card.framework, stepWord: card.stepWord, sceneTitle: card.sceneTitle,
 });
 
 console.log(`Rendering with HyperFrames (quality=${quality})…`);
