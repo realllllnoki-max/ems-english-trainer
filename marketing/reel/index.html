@@ -1,0 +1,417 @@
+<!doctype html>
+<html
+  lang="ja"
+  data-composition-variables='[
+    {"id":"q","type":"string","label":"English phrase","default":"Can you tell me what happened?"},
+    {"id":"qjp","type":"string","label":"JP phrase","default":"何があったか教えてもらえますか？"},
+    {"id":"a","type":"string","label":"Patient reply (EN)","default":"I suddenly felt chest pain."},
+    {"id":"ajp","type":"string","label":"Patient reply (JP)","default":"急に胸が痛くなりました。"}
+  ]'
+>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1080, height=1920" />
+<title>机のいらない救急英語 — Daily Reel</title>
+<script src="assets/gsap.min.js"></script>
+<script src="timeline.js"></script>
+<style>
+  @font-face{
+    font-family:"Noto Sans JP";
+    src:url("assets/NotoSansJP.ttf") format("truetype");
+    font-weight:100 900;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1080px;height:1920px;overflow:hidden;background:#FFF6E7}
+  body{font-family:"Noto Sans JP","Noto Color Emoji",sans-serif;color:#23253A}
+  #root{position:relative;width:1080px;height:1920px;overflow:hidden;background:#FFF6E7}
+
+  /* ---------- scenes ----------
+     stacked full-frame layers; DOM order = stacking order (incoming scene sits
+     on top during a transition). Scene visibility + transitions are driven by
+     the GSAP timeline. Ken Burns lives on the inner .kb wrapper so the scene's
+     own transform is free for transition moves (slide / zoom / spin). */
+  .scene{position:absolute;inset:0;overflow:hidden;transform-origin:center;will-change:transform,opacity}
+  #b2,#b3,#b4,#b5,#b6,#b7,#b8,#b9{opacity:0}
+  #b1,#b5,#b9{background:#FFF6E7}
+  #b2,#b6,#b7{background:#FFFFFF}
+  #b3{background:#E8433F}
+  #b4{background:#23253A;color:#FFF6E7}
+  #b8{background:#E8433F;color:#fff}
+  .kb{position:absolute;inset:0;transform-origin:center}
+
+  .dots{position:absolute;inset:-10%;transform-origin:center;
+      background-image:radial-gradient(circle, rgba(35,37,58,.05) 0 12px, rgba(35,37,58,0) 13px);
+      background-size:150px 150px}
+  .stage{position:absolute;inset:0;padding:0 108px;display:flex;flex-direction:column;justify-content:center}
+  .stage.center{align-items:center;text-align:center}
+
+  .tag{display:inline-flex;align-items:center;gap:14px;align-self:flex-start;
+       background:#E8433F;color:#fff;border-radius:999px;padding:16px 40px;
+       font-size:36px;font-weight:900;letter-spacing:.14em;transform:rotate(-2deg)}
+  .center .tag{align-self:center}
+  #b4 .tag{background:#FFC53D;color:#23253A}
+
+  /* mascot sticker (rounded square, thick border, offset shadow) */
+  .mascot{position:absolute;background:#fff;border:10px solid #23253A;
+          border-radius:30%;box-shadow:0 16px 0 rgba(35,37,58,.14);object-fit:cover;
+          transform-origin:center;will-change:transform}
+
+  /* b1 slam */
+  #b1 .stage{justify-content:center;padding-bottom:330px}
+  .slam{font-size:118px;font-weight:900;line-height:1.24;letter-spacing:.01em;
+        white-space:nowrap;transform-origin:center;will-change:transform}
+  .slam .r{color:#E8433F}
+  #b1 .under{margin-top:44px;font-size:40px;font-weight:800;letter-spacing:.2em;color:#8A8FA6}
+  #b1 .mascot{width:340px;height:340px;bottom:170px;left:50%;margin-left:-170px}
+
+  /* b2 JP phrase */
+  #b2 .phrase{margin-top:70px;font-weight:900;line-height:1.42}
+  #b2 .phrase .line{white-space:nowrap;overflow:hidden}
+  #b2 .phrase .line>span{display:inline-block}
+  #b2 .sub{margin-top:70px;font-size:44px;font-weight:800;color:#57B7E6}
+
+  /* b3 countdown */
+  #b3 .count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  #b3 .n{position:absolute;font-size:540px;font-weight:900;line-height:1;color:#fff;
+         transform-origin:center;will-change:transform}
+  #b3 .hint{position:absolute;bottom:430px;left:0;right:0;text-align:center;color:#fff;
+            font-size:46px;font-weight:900;letter-spacing:.2em}
+  #b3 .mascot{width:230px;height:230px;bottom:150px;left:50%;margin-left:-115px}
+
+  /* b4 kinetic answer */
+  #b4 .stage{justify-content:center}
+  .kinetic{font-size:108px;font-weight:900;line-height:1.24;letter-spacing:-.01em;margin-top:72px}
+  .kinetic .w{display:inline-block;margin-right:.24em;transform-origin:center;will-change:transform}
+  .kinetic .w.hl{color:#FFC53D}
+
+  /* b5 answer settled */
+  #b5 .en{font-size:84px;font-weight:900;line-height:1.3}
+  #b5 .rule{width:130px;height:10px;border-radius:99px;background:#E8433F;
+            margin:60px 0;transform-origin:left center}
+  #b5 .jp{font-size:50px;font-weight:700;color:#8A8FA6;line-height:1.55}
+
+  /* b6/b7 patient reply */
+  .quotewrap{border-left:12px solid #E8433F;padding-left:56px;border-radius:2px;will-change:transform}
+  #b6 .en{font-size:88px;font-weight:900;line-height:1.32}
+  #b7 .jp{font-weight:900;line-height:1.44}
+  #b7 .jp .line{white-space:nowrap}
+
+  /* b8 CTA */
+  #b8 .mascot{position:static;width:400px;height:400px;border-color:#fff;
+              box-shadow:0 16px 0 rgba(0,0,0,.18)}
+  #b8 .name{margin-top:52px;font-size:72px;font-weight:900}
+  #b8 .desc{margin-top:26px;font-size:45px;font-weight:800;opacity:.95;line-height:1.45}
+  #b8 .link{position:relative;margin-top:64px;display:inline-block;background:#23253A;color:#fff;
+            border-radius:999px;padding:30px 64px;font-size:46px;font-weight:900;
+            box-shadow:0 12px 0 rgba(0,0,0,.18);overflow:hidden}
+  /* moving shine sweep across the CTA button */
+  #b8 .link .shine{position:absolute;top:0;left:-40%;width:40%;height:100%;
+       background:linear-gradient(105deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.55) 50%, rgba(255,255,255,0) 100%);
+       transform:skewX(-18deg);will-change:transform}
+
+  /* b9 loop bridge */
+  #b9 .stage{padding-bottom:260px}
+  #b9 .big{font-size:84px;font-weight:900;line-height:1.3;white-space:nowrap}
+  #b9 .big .r{color:#E8433F}
+  #b9 .sub{margin-top:56px;font-size:46px;font-weight:800;color:#8A8FA6;line-height:1.5}
+  #b9 .mascot{width:250px;height:250px;bottom:180px;left:50%;margin-left:-125px}
+
+  /* watermark + flash — global overlays above every scene */
+  #wm{position:absolute;bottom:88px;left:0;right:0;text-align:center;font-size:32px;
+      font-weight:900;letter-spacing:.12em;color:rgba(35,37,58,.35);z-index:9998;pointer-events:none}
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;z-index:9999;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="reel" data-width="1080" data-height="1920" data-duration="26.4" data-fps="60">
+
+  <!-- B1: hook slam + mascot bounce -->
+  <section class="scene" id="b1"><div class="kb">
+    <div class="dots"></div>
+    <div class="stage center">
+      <div class="slam" id="slamEl"><div class="l1">この<span class="r">救急英語</span></div><div class="l2">言える？</div></div>
+      <div class="under">救急現場のひとこと</div>
+      <img class="mascot" id="mascot1" src="assets/mascot.png" alt="" />
+    </div>
+  </div></section>
+
+  <!-- B2: the JP phrase -->
+  <section class="scene" id="b2"><div class="kb">
+    <div class="stage">
+      <div class="tag">🚑 きょうの1フレーズ</div>
+      <div class="phrase" id="phraseJp"></div>
+      <div class="sub">↓ 3秒でこたえ</div>
+    </div>
+  </div></section>
+
+  <!-- B3: countdown (red -> yellow -> sky) -->
+  <section class="scene" id="b3"><div class="kb">
+    <div class="count">
+      <div class="n" id="cd3">3</div>
+      <div class="n" id="cd2">2</div>
+      <div class="n" id="cd1">1</div>
+    </div>
+    <div class="hint">声に出して！</div>
+    <img class="mascot" id="mascot2" src="assets/mascot.png" alt="" />
+  </div></section>
+
+  <!-- B4: kinetic answer on ink -->
+  <section class="scene" id="b4"><div class="kb">
+    <div class="stage">
+      <div class="tag">ANSWER ✨</div>
+      <div class="kinetic" id="kineticEl"></div>
+    </div>
+  </div></section>
+
+  <!-- B5: answer settled -->
+  <section class="scene" id="b5"><div class="kb">
+    <div class="dots"></div>
+    <div class="stage">
+      <div class="en" id="ansEn"></div>
+      <div class="rule"></div>
+      <div class="jp" id="ansJp"></div>
+    </div>
+  </div></section>
+
+  <!-- B6: patient reply EN -->
+  <section class="scene" id="b6"><div class="kb">
+    <div class="stage">
+      <div class="tag">🗣️ 患者はこう返す</div>
+      <div class="quotewrap" style="margin-top:80px"><div class="en" id="replyEn"></div></div>
+    </div>
+  </div></section>
+
+  <!-- B7: reply JP -->
+  <section class="scene" id="b7"><div class="kb">
+    <div class="stage">
+      <div class="quotewrap"><div class="jp" id="replyJp"></div></div>
+    </div>
+  </div></section>
+
+  <!-- B8: CTA on red, mascot hero -->
+  <section class="scene" id="b8"><div class="kb">
+    <div class="stage center">
+      <img class="mascot" id="mascot3" src="assets/mascot.png" alt="" />
+      <div class="name">机のいらない救急英語</div>
+      <div class="desc">発音はAIが判定。<br>スキマ時間を学びの時間に。</div>
+      <div class="link">プロフィールのリンクから<span class="shine"></span></div>
+    </div>
+  </div></section>
+
+  <!-- B9: loop bridge -->
+  <section class="scene" id="b9"><div class="kb">
+    <div class="dots"></div>
+    <div class="stage center">
+      <div class="big"><span class="r">保存</span>して覚えてね</div>
+      <div class="sub">明日から使える救急英語を配信<br>フォローも忘れずに！</div>
+      <img class="mascot" id="mascot4" src="assets/mascot.png" alt="" />
+    </div>
+  </div></section>
+
+  <!-- audio track (synthesized BGM/SFX + TTS, muxed by build.mjs) -->
+  <audio id="track" src="audio.wav" data-start="0" data-duration="26.4" data-track-index="20" data-volume="1"></audio>
+
+  <!-- persistent overlays -->
+  <div id="wm">机のいらない救急英語</div>
+  <div id="flash"></div>
+</div>
+
+<script>
+(function () {
+  const R = window.REEL;                       // shared timeline (timeline.js)
+  const V = (window.__hyperframes && window.__hyperframes.getVariables)
+    ? window.__hyperframes.getVariables()
+    : { q:'Can you tell me what happened?', qjp:'何があったか教えてもらえますか？',
+        a:'I suddenly felt chest pain.', ajp:'急に胸が痛くなりました。' };
+
+  /* particle-aware JP line splitter (ported from the original template) */
+  function splitJp(s) {
+    if (s.length <= 11) return [s];
+    const mid = s.length / 2;
+    let best = Math.round(mid), bestScore = -1e9;
+    for (let i = 4; i <= s.length - 4; i++) {
+      const prev = s[i - 1];
+      let score = -Math.abs(i - mid) * 10;
+      if ('、。！？・」'.includes(prev)) score += 100;
+      else if ('をにではがとへもの'.includes(prev)) score += 60;
+      if ('、。！？」'.includes(s[i])) score -= 200;
+      if (score > bestScore) { bestScore = score; best = i; }
+    }
+    return [s.slice(0, best), s.slice(best)];
+  }
+
+  /* ----- populate text + auto-fit type ----- */
+  const jpEl = document.getElementById('phraseJp');
+  const chunks = splitJp('「' + V.qjp + '」');
+  const jpMax = Math.max(...chunks.map(c => c.length));
+  jpEl.style.fontSize = Math.min(92, Math.floor(830 / jpMax)) + 'px';
+  for (const chunk of chunks) {
+    const line = document.createElement('div'); line.className = 'line';
+    const span = document.createElement('span'); span.textContent = chunk;
+    line.appendChild(span); jpEl.appendChild(line);
+  }
+
+  const words = V.q.split(' ');
+  const kin = document.getElementById('kineticEl');
+  words.forEach((w, i) => {
+    const s = document.createElement('span');
+    s.className = 'w' + (i < 2 ? ' hl' : '');
+    s.textContent = w;
+    kin.appendChild(s);
+  });
+
+  document.getElementById('ansEn').textContent = V.q;
+  document.getElementById('ansJp').textContent = V.qjp;
+  document.getElementById('replyEn').textContent = V.a;
+
+  const rjEl = document.getElementById('replyJp');
+  const rjChunks = splitJp(V.ajp);
+  const rjMax = Math.max(...rjChunks.map(c => c.length));
+  rjEl.style.fontSize = Math.min(78, Math.floor(820 / rjMax)) + 'px';
+  for (const chunk of rjChunks) {
+    const line = document.createElement('div'); line.className = 'line';
+    line.textContent = chunk;
+    rjEl.appendChild(line);
+  }
+
+  /* ---------------- one paused, seekable GSAP timeline ---------------- */
+  const tl = gsap.timeline({ paused: true });
+  const at = id => R.beat(id)[1];              // global start of a beat, seconds
+
+  /* Ken Burns: every scene's content drifts 1.00 -> 1.03 (on .kb, so the
+     scene element's own transform stays free for transitions) */
+  for (const [id, s, e] of R.BEATS) {
+    tl.fromTo('#' + id + ' .kb', { scale: 1 }, { scale: 1.03, duration: e - s, ease: 'sine.inOut' }, s);
+  }
+
+  /* backdrop dots: gentle pulse locked to the 104 BPM grid (all cream scenes) */
+  const halfBeat = 60 / R.BPM / 2;
+  tl.fromTo('.dots', { scale: 1 },
+    { scale: 1.015, duration: halfBeat, ease: 'sine.inOut',
+      yoyo: true, repeat: Math.max(0, Math.floor(R.TOTAL / halfBeat) - 1) }, 0);
+
+  /* ============ scene transitions (DOM-based, render anywhere) ============
+     the incoming scene is later in the DOM, so it stacks on top; each cut
+     animates the outgoing and incoming layers AT THE SAME TIME — the motion
+     IS the handoff. A curated set keeps it lively without feeling random:
+     zoom-through (open), punch, white-flash (climax), blur-less dissolve,
+     whip-pan (primary "next"), push, and a playful spin (outro). */
+  const W = 1080, H = 1920;
+  // Every incoming scene starts at opacity:0 (matching its CSS) and fades to 1
+  // as it moves in — so the default immediateRender simply re-asserts opacity:0
+  // at t=0 and no scene is ever visible before its own cut fires.
+  // B1 -> B2 : cinematic zoom-through
+  tl.to('#b1', { scale: 1.25, opacity: 0, duration: 0.45, ease: 'power2.in' }, at('b2'))
+    .fromTo('#b2', { scale: 1.12, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.45, ease: 'power2.out' }, at('b2'));
+  // B2 -> B3 : punch-zoom into the countdown
+  tl.to('#b2', { scale: 0.94, opacity: 0, duration: 0.32, ease: 'power2.in' }, at('b3'))
+    .fromTo('#b3', { scale: 1.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.36, ease: 'back.out(1.4)' }, at('b3'));
+  // B3 -> B4 : CLIMAX — white flash reveal (flash keeps immediateRender:false so
+  // it doesn't clobber the opening-flash tween's t=0 state)
+  tl.to('#b3', { opacity: 0, duration: 0.14, ease: 'none' }, at('b4') + 0.06)
+    .set('#b4', { opacity: 1 }, at('b4') + 0.12)
+    .fromTo('#flash', { opacity: 0 }, { opacity: 0.95, duration: 0.12, ease: 'power2.out', immediateRender: false }, at('b4'))
+    .to('#flash', { opacity: 0, duration: 0.22, ease: 'power2.in' }, at('b4') + 0.12);
+  // B4 -> B5 : soft dissolve (settle to reading)
+  tl.to('#b4', { opacity: 0, scale: 0.98, duration: 0.5, ease: 'sine.inOut' }, at('b5'))
+    .fromTo('#b5', { opacity: 0, scale: 1.04 }, { opacity: 1, scale: 1, duration: 0.5, ease: 'sine.inOut' }, at('b5'));
+  // B5 -> B6 : whip-pan (primary "next point")
+  tl.to('#b5', { x: -W, opacity: 0, duration: 0.4, ease: 'power3.inOut' }, at('b6'))
+    .fromTo('#b6', { x: W, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: 'power3.inOut' }, at('b6'));
+  // B6 -> B7 : gentle crossfade (the reply continues)
+  tl.to('#b6', { opacity: 0, duration: 0.4, ease: 'sine.inOut' }, at('b7'))
+    .fromTo('#b7', { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'sine.inOut' }, at('b7'));
+  // B7 -> B8 : push up to the CTA
+  tl.to('#b7', { y: -H * 0.55, opacity: 0, duration: 0.4, ease: 'power3.in' }, at('b8'))
+    .fromTo('#b8', { y: H * 0.55, opacity: 0 }, { y: 0, opacity: 1, duration: 0.42, ease: 'power3.out' }, at('b8'));
+  // B8 -> B9 : playful pop-spin
+  tl.to('#b8', { scale: 1.15, rotation: 4, opacity: 0, duration: 0.4, ease: 'power2.in' }, at('b9'))
+    .fromTo('#b9', { scale: 0.85, rotation: -4, opacity: 0 }, { scale: 1, rotation: 0, opacity: 1, duration: 0.42, ease: 'back.out(1.5)' }, at('b9'));
+
+  /* ---- B1 hook slam ---- */
+  tl.fromTo('#slamEl', { opacity: 0, scale: 1.9 },
+    { opacity: 1, scale: 1, duration: 0.42, ease: 'back.out(1.6)' }, 0.04)
+    .fromTo('#slamEl', { x: 0 },
+      { keyframes: { x: [0, 12, -8, 4, 0] }, duration: 0.34, ease: 'none' }, 0.06)
+    .from('#b1 .under', { opacity: 0, y: 24, duration: 0.26, ease: 'expo.out' }, 0.52)
+    .fromTo('#mascot1', { opacity: 0, scale: 0, rotation: -6 },
+      { opacity: 1, scale: 1, rotation: -6, duration: 0.42, ease: 'back.out(2)' }, 0.48)
+    .to('#mascot1', { rotation: 2, duration: 0.45, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 0.9);
+
+  /* ---- B2 JP phrase ---- */
+  tl.from('#b2 .tag', { opacity: 0, scale: 0.8, duration: 0.24, ease: 'back.out(2)' }, at('b2') + 0.3)
+    .from('#b2 .line>span', { yPercent: 110, duration: 0.48, ease: 'expo.out', stagger: 0.2 }, at('b2') + 0.42)
+    .from('#b2 .sub', { opacity: 0, y: 20, duration: 0.26, ease: 'expo.out' }, at('b2') + 1.1);
+
+  /* ---- B3 countdown: 3 digits + colour swaps, mascot hops ---- */
+  const b3 = at('b3'), palette = [
+    { bg: '#E8433F', fg: '#FFFFFF' },
+    { bg: '#FFC53D', fg: '#23253A' },
+    { bg: '#57B7E6', fg: '#FFFFFF' },
+  ];
+  ['#cd3', '#cd2', '#cd1'].forEach((sel, i) => {
+    const t = b3 + i;
+    tl.set('#b3', { backgroundColor: palette[i].bg }, t);
+    for (const s of ['#cd3', '#cd2', '#cd1']) tl.set(s, { opacity: s === sel ? 1 : 0, color: palette[i].fg }, t);
+    tl.fromTo(sel, { scale: 1.45 }, { scale: 1.0, duration: 0.3, ease: 'expo.out' }, t);
+  });
+  tl.set('#mascot2', { opacity: 1 }, b3)
+    .to('#mascot2', { keyframes: [
+        { y: -46, duration: 0.34, ease: 'back.out(2)' },
+        { y: 0,   duration: 0.66, ease: 'bounce.out' } ],
+      repeat: 2 }, b3);
+
+  /* ---- B4 kinetic answer: words pop on the beat grid ---- */
+  const wt = R.wordTimes(words.length);
+  tl.from('#b4 .tag', { opacity: 0, scale: 0.8, duration: 0.2, ease: 'back.out(2)' }, at('b4') + 0.25);
+  document.querySelectorAll('#b4 .w').forEach((w, i) => {
+    tl.fromTo(w, { opacity: 0, scale: 0.5 },
+      { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(2.2)' }, wt[i]);
+  });
+
+  /* ---- B5 answer settled ---- */
+  tl.from('#b5 .en', { opacity: 0, y: 36, duration: 0.28, ease: 'expo.out' }, at('b5') + 0.4)
+    .from('#b5 .rule', { scaleX: 0, duration: 0.4, ease: 'expo.out' }, at('b5') + 0.66)
+    .from('#b5 .jp', { opacity: 0, y: 28, duration: 0.3, ease: 'expo.out' }, at('b5') + 0.82);
+
+  /* ---- B6 reply EN ---- */
+  tl.from('#b6 .tag', { opacity: 0, scale: 0.8, duration: 0.2, ease: 'back.out(2)' }, at('b6') + 0.4)
+    .from('#b6 .quotewrap', { opacity: 0, x: 70, duration: 0.42, ease: 'expo.out' }, at('b6') + 0.5);
+
+  /* ---- B7 reply JP ---- */
+  tl.from('#b7 .quotewrap', { opacity: 0, x: 70, duration: 0.38, ease: 'expo.out' }, at('b7') + 0.4);
+
+  /* ---- B8 CTA + shine sweep ---- */
+  tl.fromTo('#mascot3', { opacity: 0, scale: 0, rotation: -4 },
+      { opacity: 1, scale: 1, rotation: -4, duration: 0.42, ease: 'back.out(2)' }, at('b8') + 0.42)
+    .to('#mascot3', { rotation: 3, duration: 0.5, ease: 'sine.inOut', yoyo: true, repeat: 3 }, at('b8') + 0.9)
+    .from('#b8 .name', { opacity: 0, y: 30, duration: 0.24, ease: 'expo.out' }, at('b8') + 0.55)
+    .from('#b8 .desc', { opacity: 0, y: 24, duration: 0.24, ease: 'expo.out' }, at('b8') + 0.7)
+    .from('#b8 .link', { opacity: 0, y: 30, duration: 0.26, ease: 'back.out(1.6)' }, at('b8') + 0.86)
+    // shine sweeps a few times across the longer hold to keep the button alive
+    .fromTo('#b8 .link .shine', { x: -80 }, { x: 620, duration: 0.7, ease: 'power2.inOut', repeat: 2, repeatDelay: 0.9 }, at('b8') + 1.15);
+
+  /* ---- B9 loop bridge ---- */
+  tl.from('#b9 .big', { opacity: 0, y: 40, duration: 0.3, ease: 'expo.out' }, at('b9') + 0.3)
+    .from('#b9 .sub', { opacity: 0, y: 24, duration: 0.26, ease: 'expo.out' }, at('b9') + 0.62)
+    .fromTo('#mascot4', { opacity: 0, scale: 0, rotation: 5 },
+      { opacity: 1, scale: 1, rotation: 5, duration: 0.42, ease: 'back.out(2)' }, at('b9') + 0.5)
+    // gentle idle wiggle so the longer closing hold doesn't feel static
+    .to('#mascot4', { rotation: -2, duration: 0.7, ease: 'sine.inOut', yoyo: true, repeat: 3 }, at('b9') + 1.1);
+
+  /* ---- watermark colour on dark scenes ---- */
+  tl.set('#wm', { color: 'rgba(255,255,255,.55)' }, at('b4'))
+    .set('#wm', { color: 'rgba(35,37,58,.35)' }, at('b5'))
+    .set('#wm', { color: 'rgba(255,255,255,.55)' }, at('b8'))
+    .set('#wm', { color: 'rgba(35,37,58,.35)' }, at('b9'));
+
+  /* ---- white flash: open decay + seamless loop close ---- */
+  tl.fromTo('#flash', { opacity: 1 }, { opacity: 0, duration: 0.26, ease: 'expo.out' }, 0)
+    .fromTo('#flash', { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.in' }, R.TOTAL - 0.38);
+
+  window.__timelines = window.__timelines || {};
+  window.__timelines['reel'] = tl;
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+# HyperFrames skill installs (regenerable via `npx skills add heygen-com/hyperframes`)
+.agents/
+agent/
+skills-lock.json
