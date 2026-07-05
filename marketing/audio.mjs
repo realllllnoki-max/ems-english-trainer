@@ -80,7 +80,7 @@ export function synthBaseTrack(timeline, outPath) {
   /* ---------- BGM: kick / hat / bass locked to the beat grid ---------- */
   // duck the backing track while a TTS voice speaks: the mascot's opening hook
   // (~0.1–1.9s) and the English phrase + reply (b5 through b7)
-  const voiceWindows = [[100, 1900], [beatOf('b5')[1], beatOf('b7')[2]]];
+  const voiceWindows = [[80, 3050], [beatOf('b5')[1], beatOf('b7')[2]]];
   const duck = tMs => (voiceWindows.some(([a, b]) => tMs >= a && tMs < b) ? 0.5 : 1);
   const bassNotes = [65.41, 65.41, 49.0, 58.27]; // C2 C2 G1 Bb1
   (beatTimes || []).forEach((b, k) => {

@@ -39,7 +39,7 @@ const FONT_URL = 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosa
  * use a clear en-US model voice so they double as pronunciation practice.
  * Tweak DOG_VOICE.pitch to taste (higher Hz = cuter/smaller). */
 const HOOK_JP = 'この救急英語言える？';
-const DOG_VOICE = { name: 'ja-JP-NanamiNeural', pitch: '+40Hz', rate: '+8%' };
+const DOG_VOICE = { name: 'ja-JP-NanamiNeural', pitch: '+40Hz', rate: '-12%' };
 const EN_VOICE = 'en-US-JennyNeural';
 
 /* ---------- CLI args ---------- */
@@ -153,7 +153,9 @@ function buildAudio(card, timeline) {
     // voice (Nanami, pitched up). The English phrase + reply stay on a clear
     // en-US model voice so they double as pronunciation practice.
     const wanted = [
-      { text: HOOK_JP, at: 150, windowMs: 1800, voice: DOG_VOICE.name, rate: DOG_VOICE.rate, pitch: DOG_VOICE.pitch, gain: 1.7 },
+      // wide window so the hook is never tempo-compressed — its pace is set
+      // purely by DOG_VOICE.rate (keep it slow and clear)
+      { text: HOOK_JP, at: 150, windowMs: 3000, voice: DOG_VOICE.name, rate: DOG_VOICE.rate, pitch: DOG_VOICE.pitch, gain: 1.7 },
       { text: card.q, at: beatOf('b5')[1] + 250, windowMs: beatOf('b5')[2] - beatOf('b5')[1] - 400, voice: EN_VOICE, rate: '-5%' },
       { text: card.a, at: beatOf('b6')[1] + 350, windowMs: beatOf('b7')[2] - beatOf('b6')[1] - 800, voice: EN_VOICE, rate: '-5%' },
     ];
