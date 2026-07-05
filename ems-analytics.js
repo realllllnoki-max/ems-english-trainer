@@ -63,12 +63,18 @@
     if (tries > 60) clearInterval(iv);
   }, 1000);
 
-  // 初回起動かどうか付きの app_open
+  // 初回起動かどうか＋流入元（?from= / ?utm_source= / リファラー）付きの app_open
   var FIRST_KEY = "ems_first_open";
   var first = false;
   try {
     first = !localStorage.getItem(FIRST_KEY);
     if (first) localStorage.setItem(FIRST_KEY, String(Date.now()));
   } catch (e) {}
-  window.emsTrack("app_open", { first: first });
+  var src = null, ref = null;
+  try {
+    var sp = new URLSearchParams(location.search);
+    src = sp.get("from") || sp.get("utm_source") || null;
+  } catch (e) {}
+  try { ref = document.referrer ? new URL(document.referrer).host : null; } catch (e) {}
+  window.emsTrack("app_open", { first: first, src: src, ref: ref });
 })();

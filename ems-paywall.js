@@ -124,6 +124,8 @@
     if (ov) { setPayMsg(""); applyPayVariant(reason); ov.classList.add("on"); }
     track("paywall_view", { reason: reason || "upgrade", pro: pro() });
   }
+  // ホームの料金リンクなど、外部からペイウォールを開くための窓口
+  window.emsOpenPay = openPay;
   function closePay() { var ov = $("payOv"); if (ov) ov.classList.remove("on"); }
   function setPayMsg(t, cls, retryFn) {
     var m = $("payMsg");

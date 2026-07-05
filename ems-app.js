@@ -228,11 +228,16 @@ function renderNav(){
 function renderModes(){renderNav();}
 
 function isGuest(){return !(window.EMSAuth && window.EMSAuth.user);}
-// 非Proユーザー向け：今日の無料枠（シナリオ1問＋単語クイズ1回）の残りを表示
+// 非Proユーザー向け：今日の無料枠（シナリオ1問＋単語クイズ1回）の残りを表示。
+// 料金はペイウォールを開く前から見えるように「Pro 月1,200円〜」を常に添える。
 function quotaLineHTML(){
   if(window.EMS_PRO||typeof window.emsQuotaInfo!=="function")return "";
   const q=window.emsQuotaInfo();
-  return `<div class="free-quota"><span class="fq-t">今日の無料枠</span><span class="fq-i ${q.scene?"":"used"}">🚑 シナリオ ${q.scene?"残り1問":"また明日"}</span><span class="fq-i ${q.quiz?"":"used"}">🔤 単語クイズ ${q.quiz?"残り1回":"また明日"}</span></div>`;
+  return `<div class="free-quota"><span class="fq-t">今日の無料枠</span><span class="fq-i ${q.scene?"":"used"}">🚑 シナリオ ${q.scene?"残り1問":"また明日"}</span><span class="fq-i ${q.quiz?"":"used"}">🔤 単語クイズ ${q.quiz?"残り1回":"また明日"}</span><button class="fq-pro" id="fqProBtn">Pro 月1,200円〜</button></div>`;
+}
+function bindQuotaProBtn(){
+  const fp=$("#fqProBtn");
+  if(fp)fp.onclick=()=>{FX.tap();if(window.emsOpenPay)window.emsOpenPay("home_pricing");};
 }
 function renderProgress(){
   const host=$("#progHost");
@@ -248,8 +253,9 @@ function renderProgress(){
         <div class="sh-s">いちばんやさしいシナリオから1問だけ。</div></div>
         <div class="sh-go">▶</div>
       </button>
-      ${window.EMS_PRO?"":`<div class="free-quota intro"><span class="fq-t">無料でできること</span><span class="fq-i">🚑 毎日シナリオ1問</span><span class="fq-i">🔤 毎日単語クイズ1回</span></div>`}`;
+      ${window.EMS_PRO?"":`<div class="free-quota intro"><span class="fq-t">無料でできること</span><span class="fq-i">🚑 毎日シナリオ1問</span><span class="fq-i">🔤 毎日単語クイズ1回</span><button class="fq-pro" id="fqProBtn">Pro 月1,200円〜</button></div>`}`;
     $("#startHero").onclick=()=>{FX.tap();startScene(recommendNext(null)||SCENES[0]);};
+    bindQuotaProBtn();
     return;
   }
   const tc=todayCount(),goal=STATS.goal||5,streak=STATS.streak||0;
@@ -268,6 +274,7 @@ function renderProgress(){
       <div class="hs-item"><span class="hs-ic">✅</span><b>${clearedCount()}</b><small>クリア</small></div>
     </div>
     ${quotaLineHTML()}`;
+  bindQuotaProBtn();
   const t1=$("#todayOne");
   if(t1)t1.onclick=()=>{FX.tap();const nx=recommendNext(null);if(nx)startScene(nx);};
 }

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机のいらない救急英語 — 救急隊員のための英語問診トレーナー</title>
+<meta name="description" content="外国人傷病者への英語問診を、声に出して練習できる救急隊員向け学習アプリ。発音はAIが自動判定。OPQRST・SAMPLEの型で学べる300シナリオ。毎日1問＋単語クイズ1回まで無料。">
+<meta property="og:title" content="机のいらない救急英語 — 救急隊員のための英語問診トレーナー">
+<meta property="og:description" content="外国人傷病者への英語問診を、声に出して練習。発音はAIが自動判定。毎日1問無料。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://realllllnoki-max.github.io/ems-english-trainer/lp.html">
+<meta property="og:image" content="https://realllllnoki-max.github.io/ems-english-trainer/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="机のいらない救急英語">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="机のいらない救急英語 — 救急隊員のための英語問診トレーナー">
+<meta name="twitter:description" content="外国人傷病者への英語問診を、声に出して練習。発音はAIが自動判定。毎日1問無料。">
+<meta name="twitter:image" content="https://realllllnoki-max.github.io/ems-english-trainer/ogp.png">
+<meta name="theme-color" content="#58cc02">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#58cc02; --green-dark:#46a302; --green-soft:#f2fce4;
+    --blue:#1cb0f6; --blue-dark:#1899d6; --blue-soft:#e7f6fd;
+    --red:#ff4b4b; --amber:#ffc800; --amber-soft:#fff8e0;
+    --ink:#3c3c3c; --ink-soft:#6f6f6f; --hare:#afafaf;
+    --line:#e5e5e5; --line-dark:#d7d7d7;
+    --r-lg:16px; --r-xl:24px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:"Noto Sans JP",sans-serif;color:var(--ink);background:#fff;line-height:1.7;
+    -webkit-font-smoothing:antialiased}
+  img{max-width:100%}
+  .wrap{max-width:680px;margin:0 auto;padding:0 20px}
+  section{padding:56px 0}
+  h2{font-size:1.5rem;font-weight:900;text-align:center;line-height:1.4;margin-bottom:8px}
+  .sec-sub{text-align:center;color:var(--ink-soft);font-size:.92rem;margin-bottom:32px}
+
+  /* CTA button */
+  .cta{display:block;width:100%;max-width:420px;margin:0 auto;text-align:center;text-decoration:none;
+    background:var(--green);color:#fff;font-weight:900;font-size:1.1rem;padding:17px 24px;
+    border-radius:var(--r-lg);box-shadow:0 4px 0 var(--green-dark);transition:transform .08s}
+  .cta:active{transform:translateY(3px);box-shadow:0 1px 0 var(--green-dark)}
+  .cta small{display:block;font-size:.74rem;font-weight:700;opacity:.92;margin-top:2px}
+  .cta-note{text-align:center;font-size:.78rem;color:var(--hare);margin-top:10px}
+
+  /* hero */
+  .hero{background:linear-gradient(160deg,var(--green) 0%,var(--green-dark) 100%);color:#fff;
+    padding:52px 0 60px;text-align:center;position:relative;overflow:hidden}
+  .hero::after{content:"";position:absolute;width:340px;height:340px;border-radius:50%;
+    background:rgba(255,255,255,.08);right:-110px;top:-120px}
+  .hero .wrap{position:relative;z-index:1}
+  .hero-badge{display:inline-block;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.5);
+    font-weight:800;font-size:.8rem;padding:5px 16px;border-radius:999px;margin-bottom:18px}
+  .hero h1{font-size:2rem;font-weight:900;line-height:1.35;margin-bottom:14px}
+  .hero h1 .hl{color:var(--amber)}
+  .hero p{font-size:.98rem;font-weight:500;opacity:.95;margin-bottom:26px}
+  .hero .mascot{width:130px;height:130px;border-radius:50%;background:#fff;object-fit:contain;
+    padding:10px;margin-bottom:20px;box-shadow:0 6px 0 rgba(0,0,0,.15)}
+  .hero .cta{background:#fff;color:var(--green-dark);box-shadow:0 4px 0 rgba(0,0,0,.2)}
+  .hero .cta-note{color:rgba(255,255,255,.85)}
+
+  /* pain */
+  .pain{background:#fafafa}
+  .pain-list{display:flex;flex-direction:column;gap:12px;max-width:520px;margin:0 auto}
+  .pain-item{background:#fff;border:2px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;
+    font-weight:700;font-size:.95rem;display:flex;gap:12px;align-items:flex-start}
+  .pain-item .pi{font-size:1.3rem;line-height:1.3;flex:0 0 auto}
+  .pain-close{max-width:520px;margin:28px auto 0;background:var(--green-soft);border:2px solid #d7f0b2;
+    border-radius:var(--r-lg);padding:18px 20px;font-size:.95rem}
+  .pain-close b{color:var(--green-dark)}
+
+  /* features */
+  .feat-grid{display:flex;flex-direction:column;gap:16px}
+  .feat{border:2px solid var(--line);border-radius:var(--r-xl);padding:22px 20px;display:flex;gap:16px;
+    align-items:flex-start;box-shadow:0 3px 0 var(--line)}
+  .feat .fi{font-size:2rem;line-height:1.2;flex:0 0 auto}
+  .feat h3{font-size:1.05rem;font-weight:900;margin-bottom:4px}
+  .feat p{font-size:.88rem;color:var(--ink-soft)}
+  .feat p b{color:var(--ink)}
+
+  /* steps */
+  .steps{background:#fafafa}
+  .step-list{display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto}
+  .step{background:#fff;border:2px solid var(--line);border-radius:var(--r-lg);padding:18px;display:flex;gap:14px;align-items:center}
+  .step .sn{width:36px;height:36px;flex:0 0 auto;border-radius:50%;background:var(--blue);color:#fff;
+    font-family:Nunito,sans-serif;font-weight:900;font-size:1.1rem;display:grid;place-items:center;box-shadow:0 3px 0 var(--blue-dark)}
+  .step .st{font-weight:900;font-size:.98rem}
+  .step .ss{font-size:.82rem;color:var(--ink-soft)}
+
+  /* pricing */
+  .price-cards{display:flex;flex-direction:column;gap:16px;max-width:520px;margin:0 auto}
+  .pcard{border:2px solid var(--line);border-radius:var(--r-xl);padding:24px 22px;box-shadow:0 3px 0 var(--line)}
+  .pcard.pro{border-color:var(--green);box-shadow:0 3px 0 var(--green-dark);position:relative}
+  .pcard .ph{font-weight:900;font-size:1.05rem;margin-bottom:2px}
+  .pcard .pp{font-family:Nunito,"Noto Sans JP",sans-serif;font-weight:900;font-size:1.7rem;margin-bottom:10px}
+  .pcard .pp small{font-size:.85rem;color:var(--ink-soft);font-weight:800}
+  .pcard ul{list-style:none;display:flex;flex-direction:column;gap:7px;font-size:.88rem}
+  .pcard li{padding-left:26px;position:relative}
+  .pcard li::before{content:"✓";position:absolute;left:0;color:var(--green-dark);font-weight:900}
+  .pcard li.na{color:var(--hare)}
+  .pcard li.na::before{content:"—";color:var(--hare)}
+  .pro-badge{position:absolute;top:-13px;right:18px;background:var(--red);color:#fff;font-size:.72rem;
+    font-weight:900;padding:4px 12px;border-radius:999px}
+  .price-alt{text-align:center;font-size:.82rem;color:var(--ink-soft);margin-top:14px}
+
+  /* faq */
+  .faq{background:#fafafa}
+  .faq-list{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+  details{background:#fff;border:2px solid var(--line);border-radius:var(--r-lg);padding:14px 18px}
+  summary{font-weight:900;font-size:.93rem;cursor:pointer;list-style:none;display:flex;gap:10px;align-items:center}
+  summary::before{content:"Q";color:var(--blue-dark);font-family:Nunito,sans-serif;font-weight:900}
+  details p{font-size:.87rem;color:var(--ink-soft);margin-top:10px;padding-left:24px}
+
+  /* last cta */
+  .last{background:linear-gradient(160deg,var(--green) 0%,var(--green-dark) 100%);color:#fff;text-align:center}
+  .last h2{color:#fff}
+  .last .sec-sub{color:rgba(255,255,255,.88)}
+  .last .cta{background:#fff;color:var(--green-dark);box-shadow:0 4px 0 rgba(0,0,0,.2)}
+  .last .cta-note{color:rgba(255,255,255,.85)}
+
+  footer{padding:28px 0 40px;text-align:center;font-size:.76rem;color:var(--hare)}
+  footer a{color:var(--hare);margin:0 8px}
+  .disclaimer{max-width:560px;margin:0 auto 16px;font-size:.72rem;color:var(--hare);text-align:left;
+    background:#fafafa;border-radius:var(--r-lg);padding:12px 16px}
+
+  @media(min-width:640px){
+    .hero h1{font-size:2.5rem}
+    .feat-grid{flex-direction:row;flex-wrap:wrap}
+    .feat{flex:1 1 45%}
+    .price-cards{flex-direction:row;max-width:680px;align-items:stretch}
+    .pcard{flex:1}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Hero ===== -->
+<div class="hero">
+  <div class="wrap">
+    <img class="mascot" src="marketing/assets/mascot.png" alt="マスコット">
+    <div><span class="hero-badge">救急隊員のための英語学習アプリ</span></div>
+    <h1>英語の傷病者、<br><span class="hl">自信を持って</span>問診できますか？</h1>
+    <p>発音はAIが自動判定。OPQRST・SAMPLEの「型」で学べる300シナリオ。<br>スマホだけで、毎日1分から始められます。</p>
+    <a class="cta" href="./?from=lp">無料で1問やってみる<small>登録不要・毎日シナリオ1問＋単語クイズ1回まで無料</small></a>
+    <div class="cta-note">Chrome推奨（発音のAI判定に対応）</div>
+  </div>
+</div>
+
+<!-- ===== Pain ===== -->
+<section class="pain">
+  <div class="wrap">
+    <h2>こんな経験はありませんか？</h2>
+    <p class="sec-sub">訪日外国人・在留外国人の増加で、英語での対応は他人事ではなくなっています。</p>
+    <div class="pain-list">
+      <div class="pain-item"><span class="pi">😰</span>外国人傷病者を前に、最初のひと言が出てこなかった</div>
+      <div class="pain-item"><span class="pi">📖</span>単語帳や参考書は買ったけれど、勤務の合間に机に向かう時間がない</div>
+      <div class="pain-item"><span class="pi">🗣️</span>読めば分かるのに、<b>声に出す練習</b>をする相手も場所もない</div>
+      <div class="pain-item"><span class="pi">🔁</span>一度覚えたフレーズも、使わないうちに忘れてしまう</div>
+    </div>
+    <div class="pain-close">
+      <b>「机のいらない救急英語」</b>は、その悩みのためのアプリです。休憩中でも移動中でも、スマホに向かって<b>声に出す</b>だけ。伝わるかどうかはAIが判定します。
+    </div>
+  </div>
+</section>
+
+<!-- ===== Features ===== -->
+<section>
+  <div class="wrap">
+    <h2>現場のための、3つのこだわり</h2>
+    <p class="sec-sub">「読んで分かる」ではなく「言って伝わる」ための設計です。</p>
+    <div class="feat-grid">
+      <div class="feat"><span class="fi">🎤</span><div>
+        <h3>発音はAIが自動判定</h3>
+        <p>お手本を聞いて、マイクに向かって話すだけ。<b>どの単語が伝わらなかったか</b>まで表示されるので、独学でも発音が直せます。</p>
+      </div></div>
+      <div class="feat"><span class="fi">🔀</span><div>
+        <h3>返答で分岐するリアルな問診</h3>
+        <p>傷病者の返答によって次の質問が変わる<b>分岐シナリオが300本</b>。胸痛・外傷・アレルギーなど、現場で出会う場面を網羅します。</p>
+      </div></div>
+      <div class="feat"><span class="fi">🧭</span><div>
+        <h3>OPQRST・SAMPLEの「型」で覚える</h3>
+        <p>丸暗記ではなく、救急標準の<b>問診フレームワーク</b>に沿って練習。順番ごと身につくから、現場で頭が真っ白になりません。</p>
+      </div></div>
+      <div class="feat"><span class="fi">🔥</span><div>
+        <h3>忘れない・続く仕組み</h3>
+        <p>ストリーク・バッジ・レベル解放で毎日続き、まちがえた単語は<b>忘却曲線（1→3→7→14→30日）</b>で自動的に復習に出てきます。</p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Steps ===== -->
+<section class="steps">
+  <div class="wrap">
+    <h2>使い方は3ステップ</h2>
+    <p class="sec-sub">アプリのインストールも登録も不要。ブラウザで開くだけです。</p>
+    <div class="step-list">
+      <div class="step"><span class="sn">1</span><div><div class="st">シナリオを開く</div><div class="ss">「さっそく始めよう」をタップ。いちばんやさしい1問から。</div></div></div>
+      <div class="step"><span class="sn">2</span><div><div class="st">お手本を聞いて、声に出す</div><div class="ss">AIが聞き取って一致度を判定。伝わらなかった単語が一目で分かります。</div></div></div>
+      <div class="step"><span class="sn">3</span><div><div class="st">傷病者の返答を聞いて、次の質問へ</div><div class="ss">返答に合わせて問診を進め、最後に問診ルートを振り返ります。</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Pricing ===== -->
+<section>
+  <div class="wrap">
+    <h2>まず無料で。続けたくなったらPro</h2>
+    <p class="sec-sub">無料のまま毎日使えます。クレジットカードの登録も不要です。</p>
+    <div class="price-cards">
+      <div class="pcard">
+        <div class="ph">無料</div>
+        <div class="pp">¥0</div>
+        <ul>
+          <li>シナリオ練習 毎日1問</li>
+          <li>単語クイズ 毎日1回</li>
+          <li>発音のAI判定</li>
+          <li>ストリーク・学習記録</li>
+          <li class="na">全300シナリオ使い放題</li>
+          <li class="na">テストモード・集中復習</li>
+        </ul>
+      </div>
+      <div class="pcard pro">
+        <span class="pro-badge">1年プランなら約817円/月</span>
+        <div class="ph">Pro</div>
+        <div class="pp">¥1,200<small>/月〜</small></div>
+        <ul>
+          <li>全10レベル・300シナリオ使い放題</li>
+          <li>単語クイズも回数無制限</li>
+          <li>テストモードで実力判定</li>
+          <li>苦手シナリオ・単語の集中復習</li>
+          <li>学習記録をクラウド保存（機種変OK）</li>
+          <li>いつでも解約OK</li>
+        </ul>
+      </div>
+    </div>
+    <p class="price-alt">6ヶ月プラン 6,000円（1,000円/月相当）・1年プラン 9,800円（約817円/月相当）</p>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section class="faq">
+  <div class="wrap">
+    <h2>よくある質問</h2>
+    <p class="sec-sub"></p>
+    <div class="faq-list">
+      <details>
+        <summary>アプリのインストールは必要ですか？</summary>
+        <p>不要です。ブラウザで開くだけで使えます。スマホの「ホーム画面に追加」をすると、アプリのように起動できます（PWA対応）。</p>
+      </details>
+      <details>
+        <summary>発音判定はどのブラウザでも使えますか？</summary>
+        <p>発音のAI判定はChrome（Android・PC）で利用できます。対応していないブラウザでは、お手本の音声を聞きながら進める学習モードになります。</p>
+      </details>
+      <details>
+        <summary>本当に無料で使えますか？</summary>
+        <p>はい。毎日シナリオ1問＋単語クイズ1回まで、期限なく無料で使えます。登録やクレジットカードも不要です。すべての機能を使いたい場合のみProプラン（月1,200円〜）をご検討ください。</p>
+      </details>
+      <details>
+        <summary>Proの解約はいつでもできますか？</summary>
+        <p>はい。アプリ内の「プラン管理」からいつでも解約できます。解約後も、契約期間の終わりまではProの機能を使えます。</p>
+      </details>
+      <details>
+        <summary>医療通訳や翻訳の代わりになりますか？</summary>
+        <p>なりません。本アプリは英語学習用であり、医療行為・通訳業務を代替するものではありません。実際の現場では所属機関の規程に従ってください。</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Last CTA ===== -->
+<section class="last">
+  <div class="wrap">
+    <h2>次の外国人対応は、突然やってくる</h2>
+    <p class="sec-sub">今日の1問が、いつかの現場のひと言になります。</p>
+    <a class="cta" href="./?from=lp">無料で1問やってみる<small>登録不要・1分で終わります</small></a>
+  </div>
+</section>
+
+<footer>
+  <div class="disclaimer">
+    本アプリは英語学習を目的としたものであり、医学的助言・診断・治療を提供するものではありません。掲載しているシナリオ・表現は学習用の例文です。
+  </div>
+  <a href="terms.html">利用規約</a>|<a href="privacy.html">プライバシーポリシー</a>|<a href="tokushoho.html">特定商取引法に基づく表記</a>
+  <div style="margin-top:10px">© 机のいらない救急英語</div>
+</footer>
+
+</body>
+</html>

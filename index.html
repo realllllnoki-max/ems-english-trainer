@@ -6,8 +6,18 @@
 <title>机のいらない救急英語 — 問診トレーナー</title>
 <meta name="description" content="救急隊向けの英語問診トレーナー。OPQRSTやSAMPLEなどの型に沿って、英語の問診を声に出して練習し、発音を自動判定します。学習用アプリ。">
 <meta property="og:title" content="机のいらない救急英語 — 問診トレーナー">
-<meta property="og:description" content="英語の救急問診を、声に出して練習。発音を自動判定するDuolingo風の学習アプリ。">
+<meta property="og:description" content="英語の救急問診を、声に出して練習。発音を自動判定するDuolingo風の学習アプリ。毎日1問＋単語クイズ1回まで無料。">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://realllllnoki-max.github.io/ems-english-trainer/">
+<meta property="og:image" content="https://realllllnoki-max.github.io/ems-english-trainer/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="机のいらない救急英語">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="机のいらない救急英語 — 問診トレーナー">
+<meta name="twitter:description" content="英語の救急問診を、声に出して練習。発音を自動判定するDuolingo風の学習アプリ。毎日1問＋単語クイズ1回まで無料。">
+<meta name="twitter:image" content="https://realllllnoki-max.github.io/ems-english-trainer/ogp.png">
 <meta name="theme-color" content="#ff4b4b">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon-180.png">
@@ -318,6 +328,12 @@
   .free-quota .fq-t{font-size:.7rem;font-weight:900;color:var(--blue-dark);letter-spacing:.04em}
   .free-quota .fq-i{font-size:.78rem;font-weight:800;color:var(--ink)}
   .free-quota .fq-i.used{color:var(--hare);text-decoration:line-through;text-decoration-thickness:2px}
+  .free-quota .fq-pro{
+    margin-left:auto;background:#fff;border:2px solid var(--line-dark);border-radius:999px;
+    padding:4px 12px;font-family:"Noto Sans JP",sans-serif;font-size:.72rem;font-weight:900;
+    color:var(--blue-dark);cursor:pointer;white-space:nowrap;
+  }
+  .free-quota .fq-pro:active{transform:translateY(1px)}
   .sum-grid{display:flex;gap:10px;margin-top:12px}
   .sum-cell{
     flex:1;background:#fff;border:2px solid var(--line);border-radius:var(--r-lg);
@@ -860,12 +876,12 @@
 
 <!-- キャッシュ即時反映のため、JSを変更してデプロイするときは ?v= の数字を1つ上げること -->
 <!-- ems-analytics.js は emsTrack を定義するため最初に読み込む -->
-<script src="ems-analytics.js?v=1"></script>
+<script src="ems-analytics.js?v=2"></script>
 <script src="ems-data.js?v=4"></script>
-<script src="ems-app.js?v=5"></script>
+<script src="ems-app.js?v=6"></script>
 <script src="ems-auth.js?v=5"></script>
 <script src="ems-sync.js?v=4"></script>
-<script src="ems-paywall.js?v=6"></script>
+<script src="ems-paywall.js?v=7"></script>
 <script src="ems-pwa.js?v=4"></script>
 </body>
 </html>
