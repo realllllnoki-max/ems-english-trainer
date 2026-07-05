@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>EMS English — 救急英語問診トレーナー</title>
+<title>机のいらない救急英語 — 問診トレーナー</title>
 <meta name="description" content="救急隊向けの英語問診トレーナー。OPQRSTやSAMPLEなどの型に沿って、英語の問診を声に出して練習し、発音を自動判定します。学習用アプリ。">
-<meta property="og:title" content="EMS English — 救急英語問診トレーナー">
+<meta property="og:title" content="机のいらない救急英語 — 問診トレーナー">
 <meta property="og:description" content="英語の救急問診を、声に出して練習。発音を自動判定するDuolingo風の学習アプリ。">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#ff4b4b">
@@ -14,7 +14,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="EMS English">
+<meta name="apple-mobile-web-app-title" content="机のいらない救急英語">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -67,9 +67,11 @@
   header{position:sticky;top:0;z-index:50;background:#fff;border-bottom:2px solid var(--line)}
   .head-in{max-width:600px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px}
   .logo{width:46px;height:46px;flex:0 0 auto;object-fit:contain;display:block}
-  .brand h1{font-weight:900;font-size:1.3rem;letter-spacing:-.01em;color:var(--ink);line-height:1.1}
+  .brand{min-width:0}
+  .brand h1{font-weight:900;font-size:1.1rem;letter-spacing:-.02em;color:var(--ink);line-height:1.15}
+  .brand h1 .nm-core{white-space:nowrap}
   .brand p{font-size:.68rem;font-weight:800;letter-spacing:.14em;color:var(--hare);text-transform:uppercase}
-  .count-pill{margin-left:auto;background:var(--blue-soft);color:var(--blue-dark);font-weight:900;font-size:.78rem;padding:6px 12px;border-radius:var(--r-pill)}
+  .count-pill{margin-left:auto;background:var(--blue-soft);color:var(--blue-dark);font-weight:900;font-size:.78rem;padding:6px 12px;border-radius:var(--r-pill);white-space:nowrap;flex:0 0 auto}
   .chips-bar{position:sticky;top:68px;z-index:40;background:#fff;padding:10px 0 12px;margin:0 -16px;border-bottom:2px solid var(--line)}
   .chips{display:flex;gap:8px;overflow-x:auto;padding:0 16px;scrollbar-width:none}
   .chips::-webkit-scrollbar{display:none}
@@ -712,8 +714,7 @@
     <div class="head-in">
       <img class="logo" src="logo.png" alt="" aria-hidden="true">
       <div class="brand">
-        <h1>EMS English</h1>
-        <p>Interview Trainer</p>
+        <h1>机のいらない<span class="nm-core">救急英語</span></h1>
       </div>
       <div class="count-pill" id="countPill"></div>
       <button class="acct-btn" id="emsAccount" type="button">ログイン</button>
