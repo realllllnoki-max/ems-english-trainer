@@ -1,8 +1,9 @@
 /* ================= EMS PAYWALL =================
  * 課金ロック/解放のフロント側。
- *  - ゲスト状態で「レベル1の最初の1問」だけ無料プレイ可能。
- *  - 2問目以降・他レベル・全機能は Pro 限定（ログイン必須）。
- *  - startScene / startQuiz / startTest をラップして非Proをペイウォールへ。
+ *  - 無料枠（非Pro）: 1日につき「シナリオ1問＋単語クイズ1回」。
+ *    同じ日に始めたシナリオの再挑戦は無料枠を消費しない（クリア再挑戦OK）。
+ *  - テストモードと2回目以降のプレイは Pro 限定。
+ *  - startScene / startQuiz / startTest をラップして枠切れ・Pro限定をペイウォールへ。
  *  - 「このプランで続ける」をクリック時のみログイン & Checkout。
  *  - 決済からの戻り（?checkout=success）を検知して is_pro を再取得。
  * 依存: ems-app.js（startScene等, SCENES）, ems-auth.js（window.EMSAuth, window.EMS_PRO）
@@ -13,73 +14,118 @@
   function $(id) { return document.getElementById(id); }
   function pro() { return !!window.EMS_PRO; }
   function auth() { return window.EMSAuth; }
+  function track(ev, p) { try { if (window.emsTrack) window.emsTrack(ev, p); } catch (e) {} }
   // SCENES は ems-data.js の const（window には載らないが、クラシックスクリプト間で
   // グローバル字句スコープを共有するため bare 参照で取得できる）
   function scenes() {
     try { return (typeof SCENES !== "undefined" && SCENES) ? SCENES : []; } catch (e) { return []; }
   }
 
-  // 無料で遊べる唯一のシナリオ（レベル1の先頭）
+  // 無料枠のおすすめ導線に使うフォールバック（レベル1の先頭）
   function freeScene() {
     var l1 = scenes().filter(function (s) { return s && s.lv === 1; });
     return l1[0] || scenes()[0] || null;
   }
-  function isFree(s) { var f = freeScene(); return !!(f && s && s.id === f.id); }
+
+  /* ---------- 無料枠（1日: シナリオ1問＋単語クイズ1回） ---------- */
+  var QUOTA_KEY = "ems_free_quota_v1";
+  function quotaDay() {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function quota() {
+    var q = null;
+    try { q = JSON.parse(localStorage.getItem(QUOTA_KEY) || "null"); } catch (e) {}
+    if (!q || q.day !== quotaDay()) q = { day: quotaDay(), sceneId: null, quiz: false };
+    return q;
+  }
+  function saveQuota(q) { try { localStorage.setItem(QUOTA_KEY, JSON.stringify(q)); } catch (e) {} }
+  // 今日まだ枠が残っているか。今日すでに始めたシナリオ自身は再挑戦OK
+  function canPlayScene(s) { var q = quota(); return !q.sceneId || (s && q.sceneId === s.id); }
+  function useSceneQuota(s) { var q = quota(); if (!q.sceneId && s) { q.sceneId = s.id; saveQuota(q); } }
+  function canPlayQuiz() { return !quota().quiz; }
+  function useQuizQuota() { var q = quota(); if (!q.quiz) { q.quiz = true; saveQuota(q); } }
+  // ホーム画面などから残り枠を参照する
+  window.emsQuotaInfo = function () {
+    var q = quota();
+    return { scene: !q.sceneId, sceneId: q.sceneId, quiz: !q.quiz };
+  };
 
   // カード描画(ems-app.js cardHTML)から参照する課金ステータス
-  // 戻り: "free"（無料の1問）/ "locked"（Pro限定）/ null（Pro なのでロックなし）
+  // 戻り: null（枠あり or Pro）/ "free"（今日の1問=再挑戦OK）/ "locked"（枠切れ）
   window.emsSceneStatus = function (s) {
     if (pro()) return null;
-    return isFree(s) ? "free" : "locked";
+    var q = quota();
+    if (!q.sceneId) return null;
+    return (s && s.id === q.sceneId) ? "free" : "locked";
   };
 
   /* ---------- エントリーをラップして課金ゲート ---------- */
   var _startScene = window.startScene;
   if (typeof _startScene === "function") {
     window.startScene = function (s) {
-      if (!pro() && s && !isFree(s)) { openPay(); return; }
+      if (!pro() && s) {
+        if (!canPlayScene(s)) { openPay("scene_quota"); return; }
+        useSceneQuota(s);
+      }
       return _startScene.apply(this, arguments);
     };
   }
   var _startQuiz = window.startQuiz;
   if (typeof _startQuiz === "function") {
     window.startQuiz = function () {
-      if (!pro()) { openPay(); return; }
+      if (!pro()) {
+        if (!canPlayQuiz()) { openPay("quiz_quota"); return; }
+        useQuizQuota();
+      }
       return _startQuiz.apply(this, arguments);
     };
   }
   var _startTest = window.startTest;
   if (typeof _startTest === "function") {
     window.startTest = function () {
-      if (!pro()) { openPay(); return; }
+      if (!pro()) { openPay("test"); return; }
       return _startTest.apply(this, arguments);
     };
   }
 
   /* ---------- ペイウォール モーダル ---------- */
   var _lastRetryFn = null; // エラー時のリトライ用
-  // 無料シナリオ（レベル1の先頭）を一度でもプレイ済みか。
-  // PROG は ems-app.js の module-scope let（クラシックスクリプト間で字句スコープ共有）。
-  function freeTried() {
-    try {
-      var f = freeScene();
-      return !!(f && typeof PROG !== "undefined" && PROG && PROG[f.id]);
-    } catch (e) { return false; }
-  }
-  // 無料分を試したかで、ペイウォールの上部を出し分ける。
-  //  - 初回: 「無料で試してみる」ボタン＋「または」＋体験を促す文言
-  //  - 試した後: それらを隠し、Proプランに集中した文言へ
-  function applyPayVariant() {
-    var tried = freeTried();
+  var _payReason = "upgrade"; // 直近にペイウォールを開いた理由（無料導線の出し分けに使う）
+  // 開いた理由ごとに、上部の文言と「無料枠へ逃がす」ボタンを出し分ける。
+  // 逃がし先は「まだ残っている方の無料枠」（例: クイズ枠切れ→シナリオ枠へ誘導）
+  function applyPayVariant(reason) {
+    _payReason = reason || "upgrade";
     var free = $("payFree"), or = $("payOr"), title = $("payTitle"), sub = $("paySub");
-    if (free) free.style.display = tried ? "none" : "";
-    if (or) or.style.display = tried ? "none" : "";
-    if (title) title.textContent = tried ? "Proで全機能を解放 🚑" : "レベル1の1問に挑戦しよう 🚑";
-    if (sub) sub.textContent = tried
-      ? "無料分は体験済みです。Proで全レベル・全機能が使えます。"
-      : "無料で試してから、Proで全機能が使えます。";
+    var q = quota();
+    var showFree = false, freeLabel = "";
+    if (reason === "scene_quota") {
+      if (title) title.textContent = "今日の無料シナリオは終了 🚑";
+      if (sub) sub.textContent = "無料枠は1日1問。また明日プレイできます。Proなら全シナリオが使い放題。";
+      if (!q.quiz) { showFree = true; freeLabel = "今日の無料単語クイズを試す 🔤"; }
+    } else if (reason === "quiz_quota") {
+      if (title) title.textContent = "今日の無料クイズは終了 🔤";
+      if (sub) sub.textContent = "単語クイズの無料枠は1日1回。Proなら回数無制限で使えます。";
+      if (!q.sceneId) { showFree = true; freeLabel = "今日の無料シナリオ1問を試す 🚑"; }
+    } else if (reason === "test") {
+      if (title) title.textContent = "テストモードはPro限定 ⚡";
+      if (sub) sub.textContent = "実戦テストで実力チェックするにはProプランが必要です。";
+      if (!q.sceneId) { showFree = true; freeLabel = "先に今日の無料1問を試す 🚑"; }
+    } else {
+      if (title) title.textContent = "Proで全機能を解放 🚑";
+      if (sub) sub.textContent = "無料では毎日シナリオ1問＋単語クイズ1回。Proで使い放題に。";
+      if (!q.sceneId) { showFree = true; freeLabel = "無料で1問試してみる 🎯"; }
+    }
+    if (free) { free.style.display = showFree ? "" : "none"; if (showFree) free.textContent = freeLabel; }
+    if (or) or.style.display = showFree ? "" : "none";
   }
-  function openPay() { var ov = $("payOv"); if (ov) { setPayMsg(""); applyPayVariant(); ov.classList.add("on"); } }
+  function openPay(reason) {
+    var ov = $("payOv");
+    if (ov) { setPayMsg(""); applyPayVariant(reason); ov.classList.add("on"); }
+    track("paywall_view", { reason: reason || "upgrade", pro: pro() });
+  }
+  // ホームの料金リンクなど、外部からペイウォールを開くための窓口
+  window.emsOpenPay = openPay;
   function closePay() { var ov = $("payOv"); if (ov) ov.classList.remove("on"); }
   function setPayMsg(t, cls, retryFn) {
     var m = $("payMsg");
@@ -137,6 +183,7 @@
     }
     busy(true);
     setPayMsg("決済ページを準備しています…");
+    track("checkout_start", { plan: selectedPlan });
     try {
       var sres = await a.client.auth.getSession();
       var session = sres && sres.data && sres.data.session;
@@ -222,6 +269,7 @@
     try { history.replaceState(null, "", baseUrl()); } catch (e) {}
     if (co === "success") {
       clearPending();
+      track("purchase_success", {});
       openPay();
       setPayMsg("💳 決済が完了しました\n反映中です...");
       // Webhook 反映は非同期。数回 is_pro を再取得してUIを更新
@@ -253,6 +301,7 @@
         }
       }, 2500);
     } else if (co === "cancel") {
+      track("checkout_cancel", {});
       toast("購入はキャンセルされました");
     }
   }
@@ -291,8 +340,17 @@
     if (agreeChk && go) agreeChk.onchange = function () { go.disabled = !agreeChk.checked; };
     var free = $("payFree"); if (free) free.onclick = function () {
       closePay();
-      var f = freeScene();
-      if (f && typeof _startScene === "function") _startScene(f);
+      track("paywall_free_cta", { reason: _payReason });
+      if (_payReason === "scene_quota") {
+        // シナリオ枠切れ → まだ残っている単語クイズ枠へ（window.startQuiz 経由で枠を消費）
+        if (typeof window.startQuiz === "function") window.startQuiz("__all__");
+        return;
+      }
+      // それ以外 → 今日の無料シナリオへ（window.startScene 経由で枠を消費）
+      var nx = null;
+      try { if (typeof recommendNext === "function") nx = recommendNext(null); } catch (e) {}
+      if (!nx) nx = freeScene();
+      if (nx && typeof window.startScene === "function") window.startScene(nx);
     };
     var up = $("acctUpgrade"); if (up) up.onclick = function () {
       var aov = $("authOv"); if (aov) aov.classList.remove("on");

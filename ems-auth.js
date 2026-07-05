@@ -148,6 +148,8 @@
   }
 
   /* ---------- 送信 ---------- */
+  function track(ev, p) { try { if (window.emsTrack) window.emsTrack(ev, p); } catch (e) {} }
+
   function onSubmit() {
     if (!EMSAuth.client) return;
     var email = (emailEl.value || "").trim();
@@ -155,6 +157,7 @@
     if (!email) { setMsg("メールアドレスを入力してください", "err"); return; }
     if (pass.length < 6) { setMsg("パスワードは6文字以上で入力してください", "err"); return; }
 
+    track("auth_submit", { mode: mode, context: EMSAuth._context });
     busy(true);
     var p = (mode === "login")
       ? EMSAuth.client.auth.signInWithPassword({ email: email, password: pass })
@@ -162,14 +165,16 @@
 
     p.then(function (res) {
       busy(false);
-      if (res.error) { setMsg(jpError(res.error), "err"); return; }
+      if (res.error) { track("auth_error", { mode: mode }); setMsg(jpError(res.error), "err"); return; }
       if (mode === "signup" && res.data && !res.data.session) {
         // メール確認が有効な場合：確認メール送信
+        track("auth_email_sent", { context: EMSAuth._context });
         var extra = (EMSAuth._context === "checkout") ? "登録が完了すると、そのまま決済に進めます。" : "";
         setMsg("確認メールを送信しました。メール内のリンクを開くと登録完了です。" + extra, "ok");
         return;
       }
       // ログイン成功（onAuthStateChange が状態を更新）
+      track("auth_success", { mode: mode, context: EMSAuth._context });
       setMsg("", "");
       closeModal();
     }).catch(function (err) {

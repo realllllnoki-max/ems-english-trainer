@@ -104,6 +104,8 @@ let browseExpanded=false;
 let testQueue=[],testIdx=0,testActive=false;
 let PROG={};
 const $=s=>document.querySelector(s);
+/* 計測（ems-analytics.js）。読み込み失敗時も安全に無視 */
+function track(ev,p){try{if(window.emsTrack)window.emsTrack(ev,p);}catch(e){}}
 
 /* ================= PROGRESS STORAGE ================= */
 const STORE_KEY="ems_progress_v1";
@@ -226,21 +228,34 @@ function renderNav(){
 function renderModes(){renderNav();}
 
 function isGuest(){return !(window.EMSAuth && window.EMSAuth.user);}
+// 非Proユーザー向け：今日の無料枠（シナリオ1問＋単語クイズ1回）の残りを表示。
+// 料金はペイウォールを開く前から見えるように「Pro 月1,200円〜」を常に添える。
+function quotaLineHTML(){
+  if(window.EMS_PRO||typeof window.emsQuotaInfo!=="function")return "";
+  const q=window.emsQuotaInfo();
+  return `<div class="free-quota"><span class="fq-t">今日の無料枠</span><span class="fq-i ${q.scene?"":"used"}">🚑 シナリオ ${q.scene?"残り1問":"また明日"}</span><span class="fq-i ${q.quiz?"":"used"}">🔤 単語クイズ ${q.quiz?"残り1回":"また明日"}</span><button class="fq-pro" id="fqProBtn">Pro 月1,200円〜</button></div>`;
+}
+function bindQuotaProBtn(){
+  const fp=$("#fqProBtn");
+  if(fp)fp.onclick=()=>{FX.tap();if(window.emsOpenPay)window.emsOpenPay("home_pricing");};
+}
 function renderProgress(){
   const host=$("#progHost");
   if(activeMode!=="all"){if(host)host.innerHTML="";return;}
-  // ゲスト（未ログイン）は常にシンプルな単一CTAのみ表示。
-  // ストリーク/XPなどの実績ストリップは「アカウントに保存された記録」を連想させ、
-  // 未ログイン状態と矛盾して迷いを生むため、ログイン後に初めて見せる。
-  if(isNewUser()||isGuest()){
+  // まっさらな新規ユーザーはシンプルな単一CTAのみ表示。
+  // 一度でも学習したら（ゲストでも）ストリーク等のストリップを見せて、
+  // 「毎日の無料枠＋ストリーク」の継続ループを課金前から体験させる。
+  if(isNewUser()){
     host.innerHTML=`
       <button class="start-hero" id="startHero">
         <div class="sh-ic">🚑</div>
         <div class="sh-tx"><div class="sh-t">さっそく始めよう</div>
-        <div class="sh-s">いちばんやさしいシナリオから1問だけ。<br>1分で「型」の感覚がつかめます。</div></div>
+        <div class="sh-s">いちばんやさしいシナリオから1問だけ。</div></div>
         <div class="sh-go">▶</div>
-      </button>`;
+      </button>
+      ${window.EMS_PRO?"":`<div class="free-quota intro"><span class="fq-t">無料でできること</span><span class="fq-i">🚑 毎日シナリオ1問</span><span class="fq-i">🔤 毎日単語クイズ1回</span><button class="fq-pro" id="fqProBtn">Pro 月1,200円〜</button></div>`}`;
     $("#startHero").onclick=()=>{FX.tap();startScene(recommendNext(null)||SCENES[0]);};
+    bindQuotaProBtn();
     return;
   }
   const tc=todayCount(),goal=STATS.goal||5,streak=STATS.streak||0;
@@ -257,7 +272,9 @@ function renderProgress(){
       <div class="hs-item"><span class="hs-ic">💎</span><b>${STATS.xp||0}</b><small>XP</small></div>
       <div class="hs-item"><span class="hs-ic">🎯</span><b>${tc}/${goal}</b><small>今日</small></div>
       <div class="hs-item"><span class="hs-ic">✅</span><b>${clearedCount()}</b><small>クリア</small></div>
-    </div>`;
+    </div>
+    ${quotaLineHTML()}`;
+  bindQuotaProBtn();
   const t1=$("#todayOne");
   if(t1)t1.onclick=()=>{FX.tap();const nx=recommendNext(null);if(nx)startScene(nx);};
 }
@@ -374,7 +391,7 @@ function renderMenuBody(){
   }
   if(activeMode==="review"){
     chipsBar.classList.add("hide");grid.classList.add("hide");mic.classList.add("hide");
-    lead.innerHTML=`<h2>復習</h2><p>苦手なシナリオと、まちがえた単語を集中的におさらいできます。</p>${weakReviewCardHTML()}${srsCardHTML()}`;
+    lead.innerHTML=`<h2>復習</h2><p>苦手なシナリオと単語をおさらいしよう。</p>${weakReviewCardHTML()}${srsCardHTML()}`;
     const wr=$("#startWeakReview");if(wr)wr.onclick=()=>{FX.tap();activeMode="weak";browseExpanded=false;renderMenuBody();window.scrollTo(0,0);};
     const sb=$("#startSrs");if(sb)sb.onclick=()=>{FX.tap();startQuiz("__srs__");};
     return;
@@ -395,7 +412,7 @@ function renderMenuBody(){
     renderFullDashboard();return;
   }
   chipsBar.classList.remove("hide");grid.classList.remove("hide");mic.classList.remove("hide");
-  if(activeMode==="all"&&(isNewUser()||isGuest())){
+  if(activeMode==="all"&&isNewUser()){
     chipsBar.classList.add("hide");
     const oldT=$("#browseToggle");if(oldT)oldT.remove();
     if(browseExpanded){lead.innerHTML=`<h2>シナリオ一覧</h2><p>気になるものから自由に選べます。迷ったら上の「さっそく始めよう」へ。</p>`;renderChips();renderGrid();return;}
@@ -557,6 +574,7 @@ function startQuiz(cat){
   if(cat==="__all__")pool=[...VOCAB];else if(cat==="__weak__")pool=weakWords();else if(cat==="__srs__")pool=srsDue();else pool=VOCAB.filter(v=>v.cat===cat);
   const limit=(cat==="__weak__"||cat==="__srs__")?Math.min(20,pool.length):10;
   vQueue=shuffle([...pool]).slice(0,limit);vIdx=0;vCorrect=0;vWrong=[];sessionXp=0;
+  track("quiz_start",{cat:String(cat),n:vQueue.length,pro:!!window.EMS_PRO});
   $("#menu").classList.add("hide");$("#quiz").classList.remove("hide");window.scrollTo(0,0);renderQuestion();
 }
 $("#qzQuit").onclick=()=>{
@@ -606,6 +624,7 @@ function finishQuiz(){
   if(vCat!=="__weak__"&&vCat!=="__srs__"){VPROG[vCat]=Math.max(VPROG[vCat]||0,vCorrect);saveVocabProg();}
   STATS.quizCount=(STATS.quizCount||0)+1;
   const pct=Math.round(vCorrect/vQueue.length*100);
+  track("quiz_finish",{cat:String(vCat),pct});
   if(pct>=70){addXp(10);}
   const act=recordActivity();
   const grade=pct>=90?"🏆 完璧！":pct>=70?"🥈 good!":pct>=50?"🥉 その調子":"📖 復習しよう";
@@ -677,6 +696,7 @@ function setProgress(){
 function startScene(s){
   scene=s;fw=FRAMEWORKS[s.framework];curId=s.start;
   path=[];passed=0;attempts=0;sessionWeak=false;combo=0;sessionXp=0;
+  track("scene_start",{scene:s.id,lv:s.lv,test:!!testActive,pro:!!window.EMS_PRO});
   estTotal=longestFrom(s.nodes,s.start);
   $("#menu").classList.add("hide");$("#trainer").classList.remove("hide");
   $("#tScene").innerHTML=testActive?`<span class="test-banner">⚡ テスト ${testIdx+1}/${testQueue.length}</span>`:s.icon+" "+s.title;
@@ -691,8 +711,8 @@ function showMicPrimer(){
       <p class="primer-note">マイクを使わず、文字だけで進めることもできます（いつでも「スキップ」で次へ）。</p>
       <div class="primer-acts"><button class="b3 b3-green b3-lg" id="primerMic">マイクを使って始める</button><button class="ghostlink" id="primerNo">声を出さずに進める</button></div>
     </div>`;
-  $("#primerMic").onclick=()=>{FX.tap();STATS.onboarded=true;micOff=false;saveStats();speak(" ",1);renderNode();};
-  $("#primerNo").onclick=()=>{FX.tap();STATS.onboarded=true;micOff=true;saveStats();renderNode();};
+  $("#primerMic").onclick=()=>{FX.tap();track("mic_primer",{choice:"mic"});STATS.onboarded=true;micOff=false;saveStats();speak(" ",1);renderNode();};
+  $("#primerNo").onclick=()=>{FX.tap();track("mic_primer",{choice:"text"});STATS.onboarded=true;micOff=true;saveStats();renderNode();};
 }
 $("#quitBtn").onclick=()=>{
   const inProgress=path.length>0||attempts>0;
@@ -789,6 +809,7 @@ function judge(node,heard){
   setTimeout(()=>{const target=pass?$("#goReply"):$("#retry");if(target)target.scrollIntoView({behavior:"smooth",block:"center"});},100);
 }
 function afterQuestion(node){
+  try{if(!localStorage.getItem("ems_first_q_done")){localStorage.setItem("ems_first_q_done","1");track("first_question_done",{scene:scene&&scene.id});}}catch(e){}
   if((STATS.guideDone||0)<2){STATS.guideDone=(STATS.guideDone||0)+1;saveStats();}
   if(node.branch)renderBranch(node);else renderReply(node,node.a,node.ajp,null);
 }
@@ -819,6 +840,7 @@ function finish(){
   const runPct=path.length?Math.round(passed/path.length*100):0;
   if(allPass)addXp(15);
   recordResult(scene.id,runPct,sessionWeak);
+  track("scene_finish",{scene:scene.id,pct:runPct,allPass,test:!!testActive});
   const act=recordActivity();
   if(testActive){testNext(rows,runPct,allPass);return;}
   FX.fanfare();FX.confetti({big:allPass});
@@ -838,18 +860,17 @@ function finish(){
   $("#home").onclick=()=>{FX.tap();$("#trainer").classList.add("hide");$("#menu").classList.remove("hide");renderMenuBody();};
   const ns=$("#nextScene");if(ns&&finNext){ns.onclick=()=>{FX.tap();startScene(finNext);};}
 }
-function firstFreeScene(){return SCENES.filter(s=>s.lv===1)[0]||SCENES[0]||null;}
 function recommendNext(justFinishedId){
-  // 非Proは無料の1問しか遊べない。開始導線では常にその1問を案内するが、
-  // 無料の1問を終えた直後は同じ問題を薦めるとループするため、次のロック問題を
-  // 薦める（タップでペイウォールが開き、購入導線につながる）
-  if(!window.EMS_PRO){
-    const free=firstFreeScene();
-    if(justFinishedId&&free&&justFinishedId===free.id){
-      const rest=SCENES.filter(s=>s.id!==free.id).sort((a,b)=>a.lv-b.lv);
-      return rest[0]||free;
+  // 無料枠モデル：非Proも通常のおすすめロジックを使う。
+  // ただし今日の枠を使用済みなら、再挑戦できる「今日の1問」を優先しておすすめ
+  // （未クリアの場合のみ）。クリア済み・直後なら通常ロジックへ落ち、
+  // そのおすすめをタップするとペイウォールが開いて購入導線につながる。
+  if(!window.EMS_PRO&&typeof window.emsQuotaInfo==="function"){
+    const q=window.emsQuotaInfo();
+    if(q.sceneId&&q.sceneId!==justFinishedId){
+      const today=SCENES.find(s=>s.id===q.sceneId);
+      if(today&&!(PROG[today.id]&&PROG[today.id].cleared))return today;
     }
-    return free;
   }
   const cleared=new Set(SCENES.filter(s=>PROG[s.id]&&PROG[s.id].cleared).map(s=>s.id));
   const hi=(typeof highestUnlocked==="function")?highestUnlocked():10;
@@ -864,6 +885,7 @@ function recommendNext(justFinishedId){
 /* ================= TEST MODE ================= */
 let testScores=[];
 function startTest(){
+  track("test_start",{});
   const pool=[...SCENES];
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
   testQueue=pool.slice(0,5);testIdx=0;testActive=true;testScores=[];sessionXp=0;
