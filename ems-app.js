@@ -575,7 +575,10 @@ function startQuiz(cat){
   const limit=(cat==="__weak__"||cat==="__srs__")?Math.min(20,pool.length):10;
   vQueue=shuffle([...pool]).slice(0,limit);vIdx=0;vCorrect=0;vWrong=[];sessionXp=0;
   track("quiz_start",{cat:String(cat),n:vQueue.length,pro:!!window.EMS_PRO});
-  $("#menu").classList.add("hide");$("#quiz").classList.remove("hide");window.scrollTo(0,0);renderQuestion();
+  // ペイウォールの誘導ボタン等、シナリオ画面から直接来るパスがあるため
+  // #trainer も必ず隠す（隠し忘れると全画面の下に残り続ける）
+  stopRecog();speechSynthesis.cancel();clearPlaying();testActive=false;
+  $("#menu").classList.add("hide");$("#trainer").classList.add("hide");$("#quiz").classList.remove("hide");window.scrollTo(0,0);renderQuestion();
 }
 $("#qzQuit").onclick=()=>{
   const inProgress=vQueue.length>0&&vIdx<vQueue.length&&(vIdx>0||vAnswered);
@@ -698,7 +701,8 @@ function startScene(s){
   path=[];passed=0;attempts=0;sessionWeak=false;combo=0;sessionXp=0;
   track("scene_start",{scene:s.id,lv:s.lv,test:!!testActive,pro:!!window.EMS_PRO});
   estTotal=longestFrom(s.nodes,s.start);
-  $("#menu").classList.add("hide");$("#trainer").classList.remove("hide");
+  // クイズ結果画面のペイウォールから直接来るパスがあるため #quiz も必ず隠す
+  $("#menu").classList.add("hide");$("#quiz").classList.add("hide");$("#trainer").classList.remove("hide");
   $("#tScene").innerHTML=testActive?`<span class="test-banner">⚡ テスト ${testIdx+1}/${testQueue.length}</span>`:s.icon+" "+s.title;
   window.scrollTo(0,0);
   if(!STATS.onboarded&&!testActive){showMicPrimer();return;}
