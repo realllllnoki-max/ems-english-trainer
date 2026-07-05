@@ -34,6 +34,14 @@ const REEL = path.join(HERE, 'reel');
 const FONT_PATH = path.join(REEL, 'assets', 'NotoSansJP.ttf');
 const FONT_URL = 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf';
 
+/* Voices. The mascot (rescue dog) speaks the opening hook — a bright, high,
+ * cute delivery (Nanami pitched well up). The English phrase + patient reply
+ * use a clear en-US model voice so they double as pronunciation practice.
+ * Tweak DOG_VOICE.pitch to taste (higher Hz = cuter/smaller). */
+const HOOK_JP = 'この救急英語言える？';
+const DOG_VOICE = { name: 'ja-JP-NanamiNeural', pitch: '+40Hz', rate: '+8%' };
+const EN_VOICE = 'en-US-JennyNeural';
+
 /* ---------- CLI args ---------- */
 const args = process.argv.slice(2);
 const arg = (name, fb) => { const i = args.indexOf('--' + name); return i >= 0 ? args[i + 1] : fb; };
@@ -141,18 +149,24 @@ function buildAudio(card, timeline) {
     synthBaseTrack(timeline, baseWav);       // beat-locked BGM + timeline SFX
 
     const beatOf = id => timeline.beats.find(b => b[0] === id);
+    // The hook line is spoken by the mascot dog — a bright, high, cute Japanese
+    // voice (Nanami, pitched up). The English phrase + reply stay on a clear
+    // en-US model voice so they double as pronunciation practice.
     const wanted = [
-      { text: card.q, at: beatOf('b5')[1] + 250, windowMs: beatOf('b5')[2] - beatOf('b5')[1] - 400 },
-      { text: card.a, at: beatOf('b6')[1] + 350, windowMs: beatOf('b7')[2] - beatOf('b6')[1] - 800 },
+      { text: HOOK_JP, at: 150, windowMs: 1800, voice: DOG_VOICE.name, rate: DOG_VOICE.rate, pitch: DOG_VOICE.pitch, gain: 1.7 },
+      { text: card.q, at: beatOf('b5')[1] + 250, windowMs: beatOf('b5')[2] - beatOf('b5')[1] - 400, voice: EN_VOICE, rate: '-5%' },
+      { text: card.a, at: beatOf('b6')[1] + 350, windowMs: beatOf('b7')[2] - beatOf('b6')[1] - 800, voice: EN_VOICE, rate: '-5%' },
     ];
     const clips = [];
     for (const [i, c] of wanted.entries()) {
       try {
         const f = path.join(tmpDir, `tts${i}.mp3`);
-        execFileSync('edge-tts', ['--voice', 'en-US-JennyNeural', '--rate=-5%',
-          '--text', c.text, '--write-media', f], { stdio: 'ignore', timeout: 60000 });
+        const ttsArgs = ['--voice', c.voice, `--rate=${c.rate || '+0%'}`];
+        if (c.pitch) ttsArgs.push(`--pitch=${c.pitch}`);
+        ttsArgs.push('--text', c.text, '--write-media', f);
+        execFileSync('edge-tts', ttsArgs, { stdio: 'ignore', timeout: 60000 });
         const dur = mediaDurationMs(f);
-        clips.push({ file: f, at: c.at, tempo: Math.min(1.35, Math.max(1, dur / c.windowMs)) });
+        clips.push({ file: f, at: c.at, tempo: Math.min(1.35, Math.max(1, dur / c.windowMs)), gain: c.gain || 1.5 });
       } catch {
         console.warn(`  (TTS unavailable for "${c.text.slice(0, 30)}…" — continuing without it)`);
       }
@@ -164,7 +178,7 @@ function buildAudio(card, timeline) {
       const nIn = clips.length + 1;
       const inputs = clips.flatMap(c => ['-i', c.file]);
       const parts = clips.map((c, i) =>
-        `[${i + 1}:a]atempo=${c.tempo.toFixed(3)},volume=1.5,adelay=${c.at}|${c.at},apad[c${i}]`);
+        `[${i + 1}:a]atempo=${c.tempo.toFixed(3)},volume=${c.gain},adelay=${c.at}|${c.at},apad[c${i}]`);
       const filter = parts.join(';') + ';[0:a]' + clips.map((_, i) => `[c${i}]`).join('') +
         `amix=inputs=${nIn}:duration=first:dropout_transition=0[m];` +
         `[m]volume=${nIn},alimiter=limit=0.95[mix]`;
