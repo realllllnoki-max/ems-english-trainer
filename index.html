@@ -310,6 +310,14 @@
   .hs-item .hs-ic.lit{filter:none;opacity:1}
   .hs-item b{font-size:1.15rem;font-weight:900;color:var(--ink);line-height:1.1}
   .hs-item small{font-size:.64rem;font-weight:800;color:var(--hare);font-family:"Noto Sans JP",sans-serif}
+  .free-quota{
+    display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-top:10px;
+    background:var(--blue-soft);border:2px solid var(--line);border-radius:var(--r-lg);
+    padding:9px 12px;font-family:"Noto Sans JP",sans-serif;
+  }
+  .free-quota .fq-t{font-size:.7rem;font-weight:900;color:var(--blue-dark);letter-spacing:.04em}
+  .free-quota .fq-i{font-size:.78rem;font-weight:800;color:var(--ink)}
+  .free-quota .fq-i.used{color:var(--hare);text-decoration:line-through;text-decoration-thickness:2px}
   .sum-grid{display:flex;gap:10px;margin-top:12px}
   .sum-cell{
     flex:1;background:#fff;border:2px solid var(--line);border-radius:var(--r-lg);
@@ -796,15 +804,15 @@
 <div class="auth-ov" id="payOv">
   <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="payTitle">
     <button class="auth-close" id="payClose" aria-label="閉じる">×</button>
-    <h3 id="payTitle">レベル1の1問に挑戦しよう 🚑</h3>
-    <p class="sub" id="paySub">無料で試してから、Proで全機能が使えます。</p>
-    <button class="b3 b3-blue b3-lg" id="payFree" type="button">無料で試してみる 🎯</button>
+    <h3 id="payTitle">Proで全機能を解放 🚑</h3>
+    <p class="sub" id="paySub">無料では毎日シナリオ1問＋単語クイズ1回。Proで使い放題に。</p>
+    <button class="b3 b3-blue b3-lg" id="payFree" type="button">無料で1問試してみる 🎯</button>
     <div id="payOr" style="text-align:center;margin:16px 0;color:var(--hare);font-size:.85rem;font-weight:800;letter-spacing:.06em">または</div>
     <div>
       <h4 style="font-size:.9rem;font-weight:900;color:var(--ink);margin-bottom:12px;text-transform:uppercase;letter-spacing:.08em">Proで使える機能</h4>
       <ul class="pay-feats">
-        <li><strong>全10レベル・全シナリオ</strong>が使い放題</li>
-        <li><strong>救急英単語クイズ</strong>で語彙を強化</li>
+        <li><strong>全10レベル・全シナリオ</strong>が回数無制限</li>
+        <li><strong>救急英単語クイズ</strong>も1日1回の制限なし</li>
         <li><strong>テストモード</strong>で実力判定</li>
         <li><strong>苦手な問題を復習</strong>して集中学習</li>
         <li><strong>学習記録をクラウド保存</strong>（機種変してもデータが残る）</li>
@@ -851,11 +859,13 @@
 </div>
 
 <!-- キャッシュ即時反映のため、JSを変更してデプロイするときは ?v= の数字を1つ上げること -->
+<!-- ems-analytics.js は emsTrack を定義するため最初に読み込む -->
+<script src="ems-analytics.js?v=1"></script>
 <script src="ems-data.js?v=4"></script>
-<script src="ems-app.js?v=4"></script>
-<script src="ems-auth.js?v=4"></script>
+<script src="ems-app.js?v=5"></script>
+<script src="ems-auth.js?v=5"></script>
 <script src="ems-sync.js?v=4"></script>
-<script src="ems-paywall.js?v=5"></script>
+<script src="ems-paywall.js?v=6"></script>
 <script src="ems-pwa.js?v=4"></script>
 </body>
 </html>
