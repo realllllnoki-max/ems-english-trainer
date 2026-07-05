@@ -123,7 +123,7 @@
 </style>
 </head>
 <body>
-<div id="root" data-composition-id="reel" data-width="1080" data-height="1920" data-duration="22.8" data-fps="60">
+<div id="root" data-composition-id="reel" data-width="1080" data-height="1920" data-duration="24.8" data-fps="60">
 
   <!-- B1: hook slam + mascot bounce -->
   <section class="scene" id="b1"><div class="kb">
@@ -209,7 +209,7 @@
   </div></section>
 
   <!-- audio track (synthesized BGM/SFX + TTS, muxed by build.mjs) -->
-  <audio id="track" src="audio.wav" data-start="0" data-duration="22.8" data-track-index="20" data-volume="1"></audio>
+  <audio id="track" src="audio.wav" data-start="0" data-duration="24.8" data-track-index="20" data-volume="1"></audio>
 
   <!-- persistent overlays -->
   <div id="wm">机のいらない救急英語</div>
@@ -394,7 +394,9 @@
   tl.from('#b9 .big', { opacity: 0, y: 40, duration: 0.3, ease: 'expo.out' }, at('b9') + 0.3)
     .from('#b9 .sub', { opacity: 0, y: 24, duration: 0.26, ease: 'expo.out' }, at('b9') + 0.62)
     .fromTo('#mascot4', { opacity: 0, scale: 0, rotation: 5 },
-      { opacity: 1, scale: 1, rotation: 5, duration: 0.42, ease: 'back.out(2)' }, at('b9') + 0.5);
+      { opacity: 1, scale: 1, rotation: 5, duration: 0.42, ease: 'back.out(2)' }, at('b9') + 0.5)
+    // gentle idle wiggle so the longer closing hold doesn't feel static
+    .to('#mascot4', { rotation: -2, duration: 0.7, ease: 'sine.inOut', yoyo: true, repeat: 3 }, at('b9') + 1.1);
 
   /* ---- watermark colour on dark scenes ---- */
   tl.set('#wm', { color: 'rgba(255,255,255,.55)' }, at('b4'))

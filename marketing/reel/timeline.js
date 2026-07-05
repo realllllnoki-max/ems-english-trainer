@@ -18,9 +18,9 @@
     ['b6', 14.4, 17.0],  // patient reply EN
     ['b7', 17.0, 19.4],  // patient reply JP + framework
     ['b8', 19.4, 21.4],  // CTA
-    ['b9', 21.4, 22.8],  // loop bridge
+    ['b9', 21.4, 24.8],  // loop bridge — held long enough to read the closing copy
   ];
-  const TOTAL = 22.8;
+  const TOTAL = 24.8;
   const BPM = 104;
 
   // fixed beat grid — every downbeat from 0 to TOTAL
