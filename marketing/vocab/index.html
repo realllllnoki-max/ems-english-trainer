@@ -1,0 +1,334 @@
+<!doctype html>
+<html
+  lang="ja"
+  data-composition-variables='[
+    {"id":"cat","type":"string","label":"Category","default":"解剖"},
+    {"id":"w1en","type":"string","label":"Word 1 EN","default":"airway"},
+    {"id":"w1jp","type":"string","label":"Word 1 JP","default":"気道"},
+    {"id":"w2en","type":"string","label":"Word 2 EN","default":"chest","placeholder":""},
+    {"id":"w2jp","type":"string","label":"Word 2 JP","default":"胸部"},
+    {"id":"w3en","type":"string","label":"Word 3 EN","default":"abdomen"},
+    {"id":"w3jp","type":"string","label":"Word 3 JP","default":"腹部"}
+  ]'
+>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1080, height=1920" />
+<title>机のいらない救急英語 — Daily Vocab Reel</title>
+<script src="assets/gsap.min.js"></script>
+<script src="timeline.js"></script>
+<style>
+  @font-face{
+    font-family:"Noto Sans JP";
+    src:url("assets/NotoSansJP.ttf") format("truetype");
+    font-weight:100 900;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1080px;height:1920px;overflow:hidden;background:#FFF6E7}
+  body{font-family:"Noto Sans JP","Noto Color Emoji",sans-serif;color:#23253A}
+  #root{position:relative;width:1080px;height:1920px;overflow:hidden;background:#FFF6E7}
+
+  /* ---------- scenes (stacked layers; GSAP drives visibility) ---------- */
+  .scene{position:absolute;inset:0;overflow:hidden;transform-origin:center;will-change:transform,opacity}
+  #b2,#b3,#b4,#b5,#b6,#b7,#b8,#b9{opacity:0}
+  #b1,#b4,#b9{background:#FFF6E7}
+  #b2,#b6{background:#FFFFFF}
+  #b3{background:#23253A;color:#FFF6E7}
+  #b5{background:#E8433F;color:#fff}
+  #b7{background:#57B7E6;color:#fff}
+  #b8{background:#E8433F;color:#fff}
+  .kb{position:absolute;inset:0;transform-origin:center}
+
+  .dots{position:absolute;inset:-10%;transform-origin:center;
+      background-image:radial-gradient(circle, rgba(35,37,58,.05) 0 12px, rgba(35,37,58,0) 13px);
+      background-size:150px 150px}
+  .stage{position:absolute;inset:0;padding:0 108px;display:flex;flex-direction:column;justify-content:center}
+  .stage.center{align-items:center;text-align:center}
+
+  .tag{display:inline-flex;align-items:center;gap:14px;
+       background:#E8433F;color:#fff;border-radius:999px;padding:16px 40px;
+       font-size:36px;font-weight:900;letter-spacing:.1em;transform:rotate(-2deg)}
+  .center .tag{align-self:center}
+
+  /* round counter pill */
+  .round{margin-top:40px;display:inline-flex;align-self:center;align-items:center;
+         background:#FFF6E7;border:6px solid #23253A;border-radius:999px;
+         padding:12px 34px;font-size:34px;font-weight:900;letter-spacing:.14em;
+         transform:rotate(1.5deg)}
+  .round b{color:#E8433F}
+
+  /* mascot sticker */
+  .mascot{position:absolute;background:#fff;border:10px solid #23253A;
+          border-radius:30%;box-shadow:0 16px 0 rgba(35,37,58,.14);object-fit:cover;
+          transform-origin:center;will-change:transform}
+
+  /* b1 hook (same slam as the phrase reel) */
+  #b1 .stage{justify-content:center;padding-bottom:330px}
+  .slam{font-size:118px;font-weight:900;line-height:1.24;letter-spacing:.01em;
+        white-space:nowrap;transform-origin:center;will-change:transform}
+  .slam .r{color:#E8433F}
+  #b1 .under{margin-top:44px;font-size:40px;font-weight:800;letter-spacing:.2em;color:#8A8FA6}
+  #b1 .mascot{width:340px;height:340px;bottom:170px;left:50%;margin-left:-170px}
+
+  /* question scenes: JP word huge, centered */
+  .q .jpword{font-weight:900;line-height:1.3;transform-origin:center;will-change:transform}
+  .q .ask{margin-top:64px;font-size:46px;font-weight:800;color:#57B7E6}
+  #b4 .ask{color:#E8433F}
+
+  /* answer scenes: EN huge + JP small */
+  .a .enword{font-weight:900;line-height:1.16;letter-spacing:-.01em;
+             transform-origin:center;will-change:transform}
+  #b3 .enword{color:#FFC53D}
+  .a .jpsmall{margin-top:48px;font-size:52px;font-weight:800;opacity:.92}
+  .a .speak{margin-top:70px;font-size:40px;font-weight:900;letter-spacing:.12em;
+            display:inline-flex;align-items:center;gap:14px;
+            background:rgba(255,255,255,.16);border-radius:999px;padding:16px 40px}
+  #b3 .speak{background:rgba(255,246,231,.12)}
+
+  /* b8 CTA — identical to the phrase reel */
+  #b8 .mascot{position:static;width:400px;height:400px;border-color:#fff;
+              box-shadow:0 16px 0 rgba(0,0,0,.18)}
+  #b8 .name{margin-top:52px;font-size:72px;font-weight:900}
+  #b8 .desc{margin-top:26px;font-size:45px;font-weight:800;opacity:.95;line-height:1.45}
+  #b8 .link{position:relative;margin-top:64px;display:inline-block;background:#23253A;color:#fff;
+            border-radius:999px;padding:30px 64px;font-size:46px;font-weight:900;
+            box-shadow:0 12px 0 rgba(0,0,0,.18);overflow:hidden}
+  #b8 .link .shine{position:absolute;top:0;left:-40%;width:40%;height:100%;
+       background:linear-gradient(105deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.55) 50%, rgba(255,255,255,0) 100%);
+       transform:skewX(-18deg);will-change:transform}
+
+  /* b9 loop bridge — identical to the phrase reel */
+  #b9 .stage{padding-bottom:260px}
+  #b9 .big{font-size:84px;font-weight:900;line-height:1.3;white-space:nowrap}
+  #b9 .big .r{color:#E8433F}
+  #b9 .sub{margin-top:56px;font-size:46px;font-weight:800;color:#8A8FA6;line-height:1.5}
+  #b9 .mascot{width:250px;height:250px;bottom:180px;left:50%;margin-left:-125px}
+
+  /* overlays */
+  #wm{position:absolute;bottom:88px;left:0;right:0;text-align:center;font-size:32px;
+      font-weight:900;letter-spacing:.12em;color:rgba(35,37,58,.35);z-index:9998;pointer-events:none}
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;z-index:9999;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="vocab" data-width="1080" data-height="1920" data-duration="24.8" data-fps="60">
+
+  <!-- B1: hook slam + mascot -->
+  <section class="scene" id="b1"><div class="kb">
+    <div class="dots"></div>
+    <div class="stage center">
+      <div class="slam" id="slamEl"><div class="l1">この<span class="r">救急単語</span></div><div class="l2">言える？</div></div>
+      <div class="under">きょうの3語</div>
+      <img class="mascot" id="mascot1" src="assets/mascot.png" alt="" />
+    </div>
+  </div></section>
+
+  <!-- Round 1 -->
+  <section class="scene q" id="b2"><div class="kb">
+    <div class="stage center">
+      <div class="tag" id="tag1">🚑 きょうの救急単語</div>
+      <div class="jpword" id="q1"></div>
+      <div class="ask">英語で言うと？</div>
+      <div class="round"><b>1</b>&nbsp;/&nbsp;3</div>
+    </div>
+  </div></section>
+  <section class="scene a" id="b3"><div class="kb">
+    <div class="stage center">
+      <div class="enword" id="a1"></div>
+      <div class="jpsmall" id="a1jp"></div>
+      <div class="speak">🔊 マネして言ってみて</div>
+    </div>
+  </div></section>
+
+  <!-- Round 2 -->
+  <section class="scene q" id="b4"><div class="kb">
+    <div class="dots"></div>
+    <div class="stage center">
+      <div class="jpword" id="q2"></div>
+      <div class="ask">英語で言うと？</div>
+      <div class="round"><b>2</b>&nbsp;/&nbsp;3</div>
+    </div>
+  </div></section>
+  <section class="scene a" id="b5"><div class="kb">
+    <div class="stage center">
+      <div class="enword" id="a2"></div>
+      <div class="jpsmall" id="a2jp"></div>
+      <div class="speak">🔊 声に出すと覚える</div>
+    </div>
+  </div></section>
+
+  <!-- Round 3 -->
+  <section class="scene q" id="b6"><div class="kb">
+    <div class="stage center">
+      <div class="jpword" id="q3"></div>
+      <div class="ask">ラスト！英語で言うと？</div>
+      <div class="round"><b>3</b>&nbsp;/&nbsp;3</div>
+    </div>
+  </div></section>
+  <section class="scene a" id="b7"><div class="kb">
+    <div class="stage center">
+      <div class="enword" id="a3"></div>
+      <div class="jpsmall" id="a3jp"></div>
+      <div class="speak">🔊 3語ぜんぶ言えた？</div>
+    </div>
+  </div></section>
+
+  <!-- B8: CTA (same as phrase reel) -->
+  <section class="scene" id="b8"><div class="kb">
+    <div class="stage center">
+      <img class="mascot" id="mascot3" src="assets/mascot.png" alt="" />
+      <div class="name">机のいらない救急英語</div>
+      <div class="desc">発音はAIが判定。<br>スキマ時間を学びの時間に。</div>
+      <div class="link">プロフィールのリンクから<span class="shine"></span></div>
+    </div>
+  </div></section>
+
+  <!-- B9: loop bridge (same as phrase reel) -->
+  <section class="scene" id="b9"><div class="kb">
+    <div class="dots"></div>
+    <div class="stage center">
+      <div class="big"><span class="r">保存</span>して覚えてね</div>
+      <div class="sub">明日から使える救急英語を配信<br>フォローも忘れずに！</div>
+      <img class="mascot" id="mascot4" src="assets/mascot.png" alt="" />
+    </div>
+  </div></section>
+
+  <!-- audio track (synthesized BGM/SFX + TTS, muxed by build.mjs) -->
+  <audio id="track" src="audio.wav" data-start="0" data-duration="24.8" data-track-index="20" data-volume="1"></audio>
+
+  <div id="wm">机のいらない救急英語</div>
+  <div id="flash"></div>
+</div>
+
+<script>
+(function () {
+  const R = window.REEL;
+  const V = (window.__hyperframes && window.__hyperframes.getVariables)
+    ? window.__hyperframes.getVariables()
+    : { cat:'解剖', w1en:'airway', w1jp:'気道', w2en:'chest', w2jp:'胸部', w3en:'abdomen', w3jp:'腹部' };
+
+  /* ----- populate + auto-fit type ----- */
+  document.getElementById('tag1').textContent = '🚑 きょうの救急単語｜' + V.cat;
+  const rounds = [
+    { q: 'q1', a: 'a1', ajp: 'a1jp', en: V.w1en, jp: V.w1jp },
+    { q: 'q2', a: 'a2', ajp: 'a2jp', en: V.w2en, jp: V.w2jp },
+    { q: 'q3', a: 'a3', ajp: 'a3jp', en: V.w3en, jp: V.w3jp },
+  ];
+  for (const r of rounds) {
+    const qEl = document.getElementById(r.q);
+    qEl.textContent = r.jp;
+    qEl.style.fontSize = Math.min(150, Math.floor(830 / Math.max(3, r.jp.length))) + 'px';
+    const aEl = document.getElementById(r.a);
+    aEl.textContent = r.en;
+    // fit: longest word must fit one line; whole term may wrap to two lines
+    const maxWord = Math.max(...r.en.split(' ').map(w => w.length));
+    const fit = Math.min(150, Math.floor(864 / (0.62 * maxWord)), Math.floor((2 * 864) / (0.62 * r.en.length)));
+    aEl.style.fontSize = fit + 'px';
+    document.getElementById(r.ajp).textContent = r.jp;
+  }
+
+  /* ---------------- one paused, seekable GSAP timeline ---------------- */
+  const tl = gsap.timeline({ paused: true });
+  const at = id => R.beat(id)[1];
+
+  /* Ken Burns on every scene's content */
+  for (const [id, s, e] of R.BEATS) {
+    tl.fromTo('#' + id + ' .kb', { scale: 1 }, { scale: 1.03, duration: e - s, ease: 'sine.inOut' }, s);
+  }
+  /* dots pulse on the beat grid */
+  const halfBeat = 60 / R.BPM / 2;
+  tl.fromTo('.dots', { scale: 1 },
+    { scale: 1.015, duration: halfBeat, ease: 'sine.inOut',
+      yoyo: true, repeat: Math.max(0, Math.floor(R.TOTAL / halfBeat) - 1) }, 0);
+
+  /* ============ scene transitions (same kinetic set as the phrase reel) ============ */
+  const W = 1080, H = 1920;
+  // B1 -> B2 : cinematic zoom-through
+  tl.to('#b1', { scale: 1.25, opacity: 0, duration: 0.45, ease: 'power2.in' }, at('b2'))
+    .fromTo('#b2', { scale: 1.12, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.45, ease: 'power2.out' }, at('b2'));
+  // Q -> A : mini white flash + punch (the payoff, every round)
+  const reveal = (q, a) => {
+    tl.to('#' + q, { opacity: 0, duration: 0.14, ease: 'none' }, at(a) + 0.05)
+      .fromTo('#' + a, { scale: 1.3, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.34, ease: 'back.out(1.5)', immediateRender: false }, at(a) + 0.08)
+      .fromTo('#flash', { opacity: 0 }, { opacity: 0.85, duration: 0.1, ease: 'power2.out', immediateRender: false }, at(a))
+      .to('#flash', { opacity: 0, duration: 0.2, ease: 'power2.in' }, at(a) + 0.1);
+  };
+  reveal('b2', 'b3');
+  reveal('b4', 'b5');
+  reveal('b6', 'b7');
+  // A -> next Q : whip-pan, alternating direction
+  tl.to('#b3', { x: -W, opacity: 0, duration: 0.4, ease: 'power3.inOut' }, at('b4'))
+    .fromTo('#b4', { x: W, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: 'power3.inOut' }, at('b4'));
+  tl.to('#b5', { x: W, opacity: 0, duration: 0.4, ease: 'power3.inOut' }, at('b6'))
+    .fromTo('#b6', { x: -W, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: 'power3.inOut' }, at('b6'));
+  // B7 -> B8 : push up to the CTA
+  tl.to('#b7', { y: -H * 0.55, opacity: 0, duration: 0.4, ease: 'power3.in' }, at('b8'))
+    .fromTo('#b8', { y: H * 0.55, opacity: 0 }, { y: 0, opacity: 1, duration: 0.42, ease: 'power3.out' }, at('b8'));
+  // B8 -> B9 : playful pop-spin
+  tl.to('#b8', { scale: 1.15, rotation: 4, opacity: 0, duration: 0.4, ease: 'power2.in' }, at('b9'))
+    .fromTo('#b9', { scale: 0.85, rotation: -4, opacity: 0 }, { scale: 1, rotation: 0, opacity: 1, duration: 0.42, ease: 'back.out(1.5)' }, at('b9'));
+
+  /* ---- B1 hook slam ---- */
+  tl.fromTo('#slamEl', { opacity: 0, scale: 1.9 },
+    { opacity: 1, scale: 1, duration: 0.42, ease: 'back.out(1.6)' }, 0.04)
+    .fromTo('#slamEl', { x: 0 },
+      { keyframes: { x: [0, 12, -8, 4, 0] }, duration: 0.34, ease: 'none' }, 0.06)
+    .from('#b1 .under', { opacity: 0, y: 24, duration: 0.26, ease: 'expo.out' }, 0.52)
+    .fromTo('#mascot1', { opacity: 0, scale: 0, rotation: -6 },
+      { opacity: 1, scale: 1, rotation: -6, duration: 0.42, ease: 'back.out(2)' }, 0.48)
+    .to('#mascot1', { rotation: 2, duration: 0.45, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 0.9);
+
+  /* ---- question scenes: tag/round pop, JP word rises ---- */
+  const qIn = (id, extraTag) => {
+    const t = at(id);
+    if (extraTag) tl.from('#' + id + ' .tag', { opacity: 0, scale: 0.8, duration: 0.24, ease: 'back.out(2)' }, t + 0.3);
+    tl.from('#' + id + ' .jpword', { opacity: 0, y: 60, scale: 0.92, duration: 0.4, ease: 'expo.out' }, t + (extraTag ? 0.42 : 0.34))
+      .from('#' + id + ' .ask', { opacity: 0, y: 22, duration: 0.26, ease: 'expo.out' }, t + 0.75)
+      .from('#' + id + ' .round', { opacity: 0, scale: 0.7, duration: 0.28, ease: 'back.out(2)' }, t + 0.9);
+  };
+  qIn('b2', true);
+  qIn('b4', false);
+  qIn('b6', false);
+
+  /* ---- answer scenes: JP + speak-hint settle in after the punch ---- */
+  for (const a of R.ANSWERS) {
+    tl.from('#' + a + ' .jpsmall', { opacity: 0, y: 24, duration: 0.28, ease: 'expo.out' }, at(a) + 0.5)
+      .from('#' + a + ' .speak', { opacity: 0, y: 22, duration: 0.28, ease: 'expo.out' }, at(a) + 0.72)
+      // little pulse on the word as the TTS repeats it
+      .to('#' + a + ' .enword', { scale: 1.05, duration: 0.18, ease: 'sine.inOut', yoyo: true, repeat: 1 }, at(a) + 1.5);
+  }
+
+  /* ---- B8 CTA + shine sweep (same as phrase reel) ---- */
+  tl.fromTo('#mascot3', { opacity: 0, scale: 0, rotation: -4 },
+      { opacity: 1, scale: 1, rotation: -4, duration: 0.42, ease: 'back.out(2)' }, at('b8') + 0.42)
+    .to('#mascot3', { rotation: 3, duration: 0.5, ease: 'sine.inOut', yoyo: true, repeat: 3 }, at('b8') + 0.9)
+    .from('#b8 .name', { opacity: 0, y: 30, duration: 0.24, ease: 'expo.out' }, at('b8') + 0.55)
+    .from('#b8 .desc', { opacity: 0, y: 24, duration: 0.24, ease: 'expo.out' }, at('b8') + 0.7)
+    .from('#b8 .link', { opacity: 0, y: 30, duration: 0.26, ease: 'back.out(1.6)' }, at('b8') + 0.86)
+    .fromTo('#b8 .link .shine', { x: -80 }, { x: 620, duration: 0.7, ease: 'power2.inOut', repeat: 2, repeatDelay: 0.9 }, at('b8') + 1.15);
+
+  /* ---- B9 loop bridge (same as phrase reel) ---- */
+  tl.from('#b9 .big', { opacity: 0, y: 40, duration: 0.3, ease: 'expo.out' }, at('b9') + 0.3)
+    .from('#b9 .sub', { opacity: 0, y: 24, duration: 0.26, ease: 'expo.out' }, at('b9') + 0.62)
+    .fromTo('#mascot4', { opacity: 0, scale: 0, rotation: 5 },
+      { opacity: 1, scale: 1, rotation: 5, duration: 0.42, ease: 'back.out(2)' }, at('b9') + 0.5)
+    .to('#mascot4', { rotation: -2, duration: 0.7, ease: 'sine.inOut', yoyo: true, repeat: 3 }, at('b9') + 1.1);
+
+  /* ---- watermark colour per background ---- */
+  tl.set('#wm', { color: 'rgba(255,255,255,.55)' }, at('b3'))
+    .set('#wm', { color: 'rgba(35,37,58,.35)' }, at('b4'))
+    .set('#wm', { color: 'rgba(255,255,255,.55)' }, at('b5'))
+    .set('#wm', { color: 'rgba(35,37,58,.35)' }, at('b6'))
+    .set('#wm', { color: 'rgba(255,255,255,.55)' }, at('b7'))
+    .set('#wm', { color: 'rgba(35,37,58,.35)' }, at('b9'));
+
+  /* ---- white flash: open decay + seamless loop close ---- */
+  tl.fromTo('#flash', { opacity: 1 }, { opacity: 0, duration: 0.26, ease: 'expo.out' }, 0)
+    .fromTo('#flash', { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.in' }, R.TOTAL - 0.38);
+
+  window.__timelines = window.__timelines || {};
+  window.__timelines['vocab'] = tl;
+})();
+</script>
+</body>
+</html>

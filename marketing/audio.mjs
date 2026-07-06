@@ -1,10 +1,13 @@
 /**
- * Audio synthesis for the daily reel: a beat-locked BGM (kick / hat / bass)
- * plus SFX aligned to the visual timeline (slam boom, countdown beeps, word
- * pops, answer bell, loop riser). Everything is synthesized sample-by-sample
- * with a seeded PRNG, so output is deterministic and license-free.
+ * Audio synthesis for the daily reels: a beat-locked BGM (kick / hat / bass)
+ * plus SFX aligned to each reel's visual timeline. Everything is synthesized
+ * sample-by-sample with a seeded PRNG, so output is deterministic and
+ * license-free.
  *
- * Exports synthBaseTrack(timeline, outPath) -> writes a 44.1kHz 16-bit WAV.
+ * Exports:
+ *   synthBaseTrack(timeline, outPath)  — the phrase reel ("きょうの1フレーズ")
+ *   synthVocabTrack(timeline, outPath) — the vocab reel  ("きょうの救急単語")
+ * Both take times in ms and write a 44.1kHz 16-bit mono WAV.
  */
 import fs from 'node:fs';
 
@@ -21,16 +24,13 @@ function mulberry32(seed) {
   };
 }
 
-export function synthBaseTrack(timeline, outPath) {
-  const { beats, total, wordTimes, beatTimes } = timeline;
-  const n = Math.ceil((total / 1000) * SR);
+/* shared synth: a sample buffer plus the primitive voices that write into it */
+function createSynth(totalMs) {
+  const n = Math.ceil((totalMs / 1000) * SR);
   const buf = new Float64Array(n);
   const rand = mulberry32(20260703);
-
   const at = ms => Math.max(0, Math.round((ms / 1000) * SR));
-  const beatOf = id => beats.find(b => b[0] === id);
 
-  /* ---------- primitive voices ---------- */
   function addTone(tMs, { f0, f1 = null, durMs, gain, decayMs, harmonics = [], attackMs = 4 }) {
     const start = at(tMs), len = Math.min(Math.round((durMs / 1000) * SR), n - start);
     let phase = 0;
@@ -77,49 +77,94 @@ export function synthBaseTrack(timeline, outPath) {
     addTone(tMs, { f0: 220, f1: 950, durMs, decayMs: durMs * 2, gain: g * 0.5 });
   };
 
-  /* ---------- BGM: kick / hat / bass locked to the beat grid ---------- */
-  // duck the backing track while a TTS voice speaks: the mascot's opening hook
-  // (~0.1–1.9s) and the English phrase + reply (b5 through b7)
-  const voiceWindows = [[80, 3050], [beatOf('b5')[1], beatOf('b7')[2]]];
-  const duck = tMs => (voiceWindows.some(([a, b]) => tMs >= a && tMs < b) ? 0.5 : 1);
-  const bassNotes = [65.41, 65.41, 49.0, 58.27]; // C2 C2 G1 Bb1
-  (beatTimes || []).forEach((b, k) => {
-    const d = duck(b);
-    kick(b, 0.4 * d);
-    bass(b, bassNotes[k % 4], 0.15 * d);
-    const next = beatTimes[k + 1];
-    if (next) hat((b + next) / 2, 0.09 * d);
-  });
+  /* kick / hat / bass locked to the beat grid, ducked inside voice windows */
+  function bgm(beatTimes, voiceWindows) {
+    const duck = tMs => (voiceWindows.some(([a, b]) => tMs >= a && tMs < b) ? 0.5 : 1);
+    const bassNotes = [65.41, 65.41, 49.0, 58.27]; // C2 C2 G1 Bb1
+    (beatTimes || []).forEach((b, k) => {
+      const d = duck(b);
+      kick(b, 0.4 * d);
+      bass(b, bassNotes[k % 4], 0.15 * d);
+      const next = beatTimes[k + 1];
+      if (next) hat((b + next) / 2, 0.09 * d);
+    });
+  }
 
-  /* ---------- SFX on the visual timeline ---------- */
-  boom(60);                                    // opening flash impact
-  kick(150, 0.55);                             // slam lands
-  swoosh(beatOf('b2')[1]);                     // question slides in
+  /* soft-normalize and write WAV */
+  function write(outPath) {
+    let peak = 0;
+    for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(buf[i]));
+    const scale = peak > 0.92 ? 0.92 / peak : 1;
+    const pcm = Buffer.alloc(44 + n * 2);
+    pcm.write('RIFF', 0); pcm.writeUInt32LE(36 + n * 2, 4); pcm.write('WAVE', 8);
+    pcm.write('fmt ', 12); pcm.writeUInt32LE(16, 16); pcm.writeUInt16LE(1, 20);
+    pcm.writeUInt16LE(1, 22); pcm.writeUInt32LE(SR, 24); pcm.writeUInt32LE(SR * 2, 28);
+    pcm.writeUInt16LE(2, 32); pcm.writeUInt16LE(16, 34);
+    pcm.write('data', 36); pcm.writeUInt32LE(n * 2, 40);
+    for (let i = 0; i < n; i++) {
+      pcm.writeInt16LE(Math.round(Math.max(-1, Math.min(1, buf[i] * scale)) * 32767), 44 + i * 2);
+    }
+    fs.writeFileSync(outPath, pcm);
+  }
+
+  return { kick, hat, bass, beep, pop, bell, boom, swoosh, riser, bgm, write };
+}
+
+/* ---------- phrase reel ("きょうの1フレーズ") ---------- */
+export function synthBaseTrack(timeline, outPath) {
+  const { beats, total, wordTimes, beatTimes } = timeline;
+  const beatOf = id => beats.find(b => b[0] === id);
+  const s = createSynth(total);
+
+  // duck while a TTS voice speaks: the mascot's opening hook (~0.1–3.05s)
+  // and the English phrase + reply (b5 through b7)
+  s.bgm(beatTimes, [[80, 3050], [beatOf('b5')[1], beatOf('b7')[2]]]);
+
+  s.boom(60);                                    // opening flash impact
+  s.kick(150, 0.55);                             // slam lands
+  s.swoosh(beatOf('b2')[1]);                     // question slides in
   const b3 = beatOf('b3');
   const digit = (b3[2] - b3[1]) / 3;
-  beep(b3[1], 660); beep(b3[1] + digit, 660); beep(b3[1] + 2 * digit, 880);
-  boom(beatOf('b4')[1], 0.4);                  // answer cut
-  (wordTimes || []).forEach((w, i) => pop(w, 460 + i * 36));
-  bell(beatOf('b5')[1]);                       // settled answer
-  swoosh(beatOf('b6')[1]);
-  swoosh(beatOf('b7')[1], 0.1);
+  s.beep(b3[1], 660); s.beep(b3[1] + digit, 660); s.beep(b3[1] + 2 * digit, 880);
+  s.boom(beatOf('b4')[1], 0.4);                  // answer cut
+  (wordTimes || []).forEach((w, i) => s.pop(w, 460 + i * 36));
+  s.bell(beatOf('b5')[1]);                       // settled answer
+  s.swoosh(beatOf('b6')[1]);
+  s.swoosh(beatOf('b7')[1], 0.1);
   const b8 = beatOf('b8');
-  beep(b8[1], 523, 0.2); beep(b8[1] + 130, 659, 0.2); beep(b8[1] + 260, 784, 0.22); // CTA jingle
-  pop(beatOf('b9')[1], 520, 0.18);
-  riser(total - 650, 640);                     // into the loop flash
+  s.beep(b8[1], 523, 0.2); s.beep(b8[1] + 130, 659, 0.2); s.beep(b8[1] + 260, 784, 0.22); // CTA jingle
+  s.pop(beatOf('b9')[1], 520, 0.18);
+  s.riser(total - 650, 640);                     // into the loop flash
 
-  /* ---------- master: soft-normalize and write WAV ---------- */
-  let peak = 0;
-  for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(buf[i]));
-  const scale = peak > 0.92 ? 0.92 / peak : 1;
-  const pcm = Buffer.alloc(44 + n * 2);
-  pcm.write('RIFF', 0); pcm.writeUInt32LE(36 + n * 2, 4); pcm.write('WAVE', 8);
-  pcm.write('fmt ', 12); pcm.writeUInt32LE(16, 16); pcm.writeUInt16LE(1, 20);
-  pcm.writeUInt16LE(1, 22); pcm.writeUInt32LE(SR, 24); pcm.writeUInt32LE(SR * 2, 28);
-  pcm.writeUInt16LE(2, 32); pcm.writeUInt16LE(16, 34);
-  pcm.write('data', 36); pcm.writeUInt32LE(n * 2, 40);
-  for (let i = 0; i < n; i++) {
-    pcm.writeInt16LE(Math.round(Math.max(-1, Math.min(1, buf[i] * scale)) * 32767), 44 + i * 2);
+  s.write(outPath);
+}
+
+/* ---------- vocab reel ("きょうの救急単語", 3 Q/A rounds) ---------- */
+export function synthVocabTrack(timeline, outPath) {
+  const { beats, total, beatTimes } = timeline;
+  const beatOf = id => beats.find(b => b[0] === id);
+  const s = createSynth(total);
+
+  // duck under the hook voice and each answer's pronunciation window
+  const answers = ['b3', 'b5', 'b7'].map(id => beatOf(id));
+  s.bgm(beatTimes, [[80, 3050], ...answers.map(a => [a[1], a[1] + 2300])]);
+
+  s.boom(60);                                    // opening flash impact
+  s.kick(150, 0.55);                             // slam lands
+  for (const [qi, q] of ['b2', 'b4', 'b6'].entries()) {
+    const [, qs, qe] = beatOf(q);
+    s.swoosh(qs);                                // question arrives
+    s.beep(qs + (qe - qs) * 0.45, 520, 0.14);    // soft think-ticks
+    s.beep(qs + (qe - qs) * 0.75, 520, 0.14);
+    const a = answers[qi];
+    s.boom(a[1], 0.35);                          // reveal punch
+    s.bell(a[1] + 80, 0.3);                      // correct-answer bell
+    s.pop(a[1] + 60, 520 + qi * 60, 0.2);
   }
-  fs.writeFileSync(outPath, pcm);
+  const b8 = beatOf('b8');
+  s.beep(b8[1], 523, 0.2); s.beep(b8[1] + 130, 659, 0.2); s.beep(b8[1] + 260, 784, 0.22); // CTA jingle
+  s.pop(beatOf('b9')[1], 520, 0.18);
+  s.riser(total - 650, 640);                     // into the loop flash
+
+  s.write(outPath);
 }
