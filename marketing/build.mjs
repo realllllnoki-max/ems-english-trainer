@@ -3,65 +3,74 @@
  * Daily TikTok / Instagram Reel generator for 机のいらない救急英語,
  * built on HyperFrames (HTML -> deterministic MP4).
  *
+ * Two reel kinds, same look & feel:
+ *   phrase (default) — "きょうの1フレーズ": one full question + patient reply
+ *   vocab            — "きょうの救急単語": 3-word JP->EN quiz from VOCAB
+ *
  * Pipeline:
- *   1. pick one phrase card from ems-data.js, deterministically by date
+ *   1. pick the day's content from ems-data.js, deterministically by date
  *   2. synthesize the audio bed (beat-locked BGM/SFX + neural TTS) into
- *      reel/audio.wav — the composition references it via <audio>
- *   3. render reel/index.html with `hyperframes render`, injecting the card
+ *      <project>/audio.wav — the composition references it via <audio>
+ *   3. render <project>/index.html with `hyperframes render`, injecting the
  *      text as composition --variables
  *   4. write the post caption (.txt)
  *
  * Same date -> same video (content is date-seeded; audio synth is PRNG-seeded).
  *
  * Usage:
- *   node build.mjs                      # today -> output/YYYY-MM-DD.mp4
+ *   node build.mjs                      # today's phrase reel -> output/YYYY-MM-DD.mp4
+ *   node build.mjs --kind vocab         # today's vocab reel  -> output/YYYY-MM-DD-vocab.mp4
  *   node build.mjs --date 2026-07-10    # a specific day
- *   node build.mjs --index 42           # force a phrase card
+ *   node build.mjs --index 42           # force a phrase card / vocab offset
  *   node build.mjs --quality draft      # faster, lower-bitrate iteration
  *   node build.mjs --silent             # silent bed (post with trend audio)
+ *   node build.mjs --audio-only         # just write <project>/audio.wav (for preview)
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { synthBaseTrack } from './audio.mjs';
+import { synthBaseTrack, synthVocabTrack } from './audio.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.dirname(HERE);
-const REEL = path.join(HERE, 'reel');
-const FONT_PATH = path.join(REEL, 'assets', 'NotoSansJP.ttf');
 const FONT_URL = 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf';
 
 /* Voices. The mascot (rescue dog) speaks the opening hook — a bright, high,
- * cute delivery (Nanami pitched well up). The English phrase + patient reply
- * use a clear en-US model voice so they double as pronunciation practice.
+ * cute delivery (Nanami pitched well up). English content uses a clear en-US
+ * model voice so it doubles as pronunciation practice.
  * Tweak DOG_VOICE.pitch to taste (higher Hz = cuter/smaller). */
-const HOOK_JP = 'この救急英語言える？';
 const DOG_VOICE = { name: 'ja-JP-NanamiNeural', pitch: '+40Hz', rate: '-12%' };
 const EN_VOICE = 'en-US-JennyNeural';
+const HOOKS = { phrase: 'この救急英語言える？', vocab: 'この救急単語言える？' };
 
 /* ---------- CLI args ---------- */
 const args = process.argv.slice(2);
 const arg = (name, fb) => { const i = args.indexOf('--' + name); return i >= 0 ? args[i + 1] : fb; };
+const kind = arg('kind', 'phrase');
+if (!['phrase', 'vocab'].includes(kind)) { console.error(`unknown --kind ${kind}`); process.exit(1); }
 const dateStr = arg('date', new Date().toISOString().slice(0, 10));
 const forcedIndex = arg('index', null);
 const quality = arg('quality', 'high');
 const fps = arg('fps', '60'); // 60fps for premium smoothness (data-fps is only a hint to the renderer)
 const silent = args.includes('--silent');
-const audioOnly = args.includes('--audio-only'); // just write reel/audio.wav (for `hyperframes preview`)
+const audioOnly = args.includes('--audio-only');
 
-/* ---------- shared timeline (single source of truth) ---------- */
-function loadReelTimeline() {
-  const src = fs.readFileSync(path.join(REEL, 'timeline.js'), 'utf8');
+const PROJECT = path.join(HERE, kind === 'vocab' ? 'vocab' : 'reel');
+
+/* ---------- shared timeline (single source of truth per project) ---------- */
+function loadTimeline() {
+  const src = fs.readFileSync(path.join(PROJECT, 'timeline.js'), 'utf8');
   const g = {};
   new Function('window', src)(g);        // timeline.js attaches window.REEL
   return g.REEL;
 }
-const R = loadReelTimeline();
+const R = loadTimeline();
+const epochDay = Math.floor(Date.parse(dateStr + 'T00:00:00Z') / 86400000);
 
-/* ---------- phrase cards from the app's own data ---------- */
+/* ---------- content from the app's own data ---------- */
 function loadCards() {
   const src = fs.readFileSync(path.join(REPO, 'ems-data.js'), 'utf8');
   const { SCENES, FRAMEWORKS } = new Function(src + '; return { SCENES, FRAMEWORKS };')();
@@ -82,10 +91,33 @@ function loadCards() {
   }
   return cards;
 }
-function pickIndex(cards, date) {
-  if (forcedIndex !== null) return Number(forcedIndex) % cards.length;
-  const epochDay = Math.floor(Date.parse(date + 'T00:00:00Z') / 86400000);
-  return ((epochDay * 613) % cards.length + cards.length) % cards.length; // prime stride
+function pickCard() {
+  const cards = loadCards();
+  const idx = forcedIndex !== null
+    ? Number(forcedIndex) % cards.length
+    : ((epochDay * 613) % cards.length + cards.length) % cards.length; // prime stride
+  console.log(`Card ${idx}/${cards.length}: [${cards[idx].sceneTitle}] ${cards[idx].q}`);
+  return cards[idx];
+}
+
+/* vocab: one category per day (cycling), 3 words spread across that category */
+function pickVocab() {
+  const src = fs.readFileSync(path.join(REPO, 'ems-data.js'), 'utf8');
+  const { VOCAB } = new Function(src + '; return { VOCAB };')();
+  const byCat = new Map();
+  for (const w of VOCAB) {
+    if (w.cat === '問診表現') continue;    // sentences — that's the phrase reel's job
+    if (!byCat.has(w.cat)) byCat.set(w.cat, []);
+    byCat.get(w.cat).push(w);
+  }
+  const cats = [...byCat.keys()];
+  const cat = cats[((epochDay % cats.length) + cats.length) % cats.length];
+  const pool = byCat.get(cat);
+  const base = forcedIndex !== null ? Number(forcedIndex) : epochDay * 7;
+  const stride = Math.floor(pool.length / 3);
+  const words = [0, 1, 2].map(k => pool[(((base + k * stride) % pool.length) + pool.length) % pool.length]);
+  console.log(`Vocab [${cat}]: ${words.map(w => w.en).join(' / ')}`);
+  return { cat, words };
 }
 
 /* ---------- binaries: reuse the sandbox's ffmpeg/ffprobe/chromium ---------- */
@@ -121,12 +153,18 @@ function hyperframesBin() {
   return fs.existsSync(local) ? local : null;
 }
 
-/* the Japanese font is large (~9.5 MB) and gitignored; fetch it on first run */
+/* the Japanese font is large (~9.5 MB) and gitignored; reuse a sibling
+ * project's copy when possible, download on first run otherwise */
 function ensureFont() {
-  if (fs.existsSync(FONT_PATH)) return;
+  const target = path.join(PROJECT, 'assets', 'NotoSansJP.ttf');
+  if (fs.existsSync(target)) return;
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  for (const sibling of ['reel', 'vocab']) {
+    const other = path.join(HERE, sibling, 'assets', 'NotoSansJP.ttf');
+    if (fs.existsSync(other)) { fs.copyFileSync(other, target); return; }
+  }
   console.log('Downloading Noto Sans JP…');
-  fs.mkdirSync(path.dirname(FONT_PATH), { recursive: true });
-  execFileSync('curl', ['-sSfL', '-o', FONT_PATH, FONT_URL], { stdio: 'inherit' });
+  execFileSync('curl', ['-sSfL', '-o', target, FONT_URL], { stdio: 'inherit' });
 }
 
 /* media duration in ms via ffprobe */
@@ -138,58 +176,76 @@ function mediaDurationMs(file) {
   return Math.round(sec * 1000);
 }
 
-/* ---------- audio bed: BGM/SFX + neural TTS -> reel/audio.wav ---------- */
-function buildAudio(card, timeline) {
-  const outWav = path.join(REEL, 'audio.wav');
+/* ---------- audio bed: BGM/SFX + neural TTS -> <project>/audio.wav ---------- */
+function ttsClip(tmpDir, i, spec) {
+  const f = path.join(tmpDir, `tts${i}.mp3`);
+  const ttsArgs = ['--voice', spec.voice, `--rate=${spec.rate || '+0%'}`];
+  if (spec.pitch) ttsArgs.push(`--pitch=${spec.pitch}`);
+  ttsArgs.push('--text', spec.text, '--write-media', f);
+  execFileSync('edge-tts', ttsArgs, { stdio: 'ignore', timeout: 60000 });
+  return { file: f, durMs: mediaDurationMs(f) };
+}
+
+function mixClips(baseWav, clips, outWav) {
+  if (!clips.length) { fs.copyFileSync(baseWav, outWav); return; }
+  // bundled ffmpeg is 4.x — apad keeps every input alive for duration=first,
+  // a fixed post-gain undoes amix's 1/n scaling, alimiter tames peaks
+  const nIn = clips.length + 1;
+  const inputs = clips.flatMap(c => ['-i', c.file]);
+  const parts = clips.map((c, i) =>
+    `[${i + 1}:a]atempo=${(c.tempo || 1).toFixed(3)},volume=${c.gain || 1.5},adelay=${c.at}|${c.at},apad[c${i}]`);
+  const filter = parts.join(';') + ';[0:a]' + clips.map((_, i) => `[c${i}]`).join('') +
+    `amix=inputs=${nIn}:duration=first:dropout_transition=0[m];` +
+    `[m]volume=${nIn},alimiter=limit=0.95[mix]`;
+  execFileSync(ffmpegPath(), ['-y', '-i', baseWav, ...inputs,
+    '-filter_complex', filter, '-map', '[mix]', '-ar', '44100', outWav],
+    { stdio: ['ignore', 'ignore', 'inherit'] });
+}
+
+function buildAudio(content, timeline) {
+  const outWav = path.join(PROJECT, 'audio.wav');
   if (silent) { writeSilence(outWav, timeline.total); return; }
 
   const tmpDir = fs.mkdtempSync(path.join(HERE, 'output', '.audio-'));
   try {
     const baseWav = path.join(tmpDir, 'base.wav');
-    synthBaseTrack(timeline, baseWav);       // beat-locked BGM + timeline SFX
-
     const beatOf = id => timeline.beats.find(b => b[0] === id);
-    // The hook line is spoken by the mascot dog — a bright, high, cute Japanese
-    // voice (Nanami, pitched up). The English phrase + reply stay on a clear
-    // en-US model voice so they double as pronunciation practice.
-    const wanted = [
-      // wide window so the hook is never tempo-compressed — its pace is set
-      // purely by DOG_VOICE.rate (keep it slow and clear)
-      { text: HOOK_JP, at: 150, windowMs: 3000, voice: DOG_VOICE.name, rate: DOG_VOICE.rate, pitch: DOG_VOICE.pitch, gain: 1.7 },
-      { text: card.q, at: beatOf('b5')[1] + 250, windowMs: beatOf('b5')[2] - beatOf('b5')[1] - 400, voice: EN_VOICE, rate: '-5%' },
-      { text: card.a, at: beatOf('b6')[1] + 350, windowMs: beatOf('b7')[2] - beatOf('b6')[1] - 800, voice: EN_VOICE, rate: '-5%' },
-    ];
     const clips = [];
-    for (const [i, c] of wanted.entries()) {
+    let n = 0;
+    const addTts = (spec, at, windowMs, gain) => {
       try {
-        const f = path.join(tmpDir, `tts${i}.mp3`);
-        const ttsArgs = ['--voice', c.voice, `--rate=${c.rate || '+0%'}`];
-        if (c.pitch) ttsArgs.push(`--pitch=${c.pitch}`);
-        ttsArgs.push('--text', c.text, '--write-media', f);
-        execFileSync('edge-tts', ttsArgs, { stdio: 'ignore', timeout: 60000 });
-        const dur = mediaDurationMs(f);
-        clips.push({ file: f, at: c.at, tempo: Math.min(1.35, Math.max(1, dur / c.windowMs)), gain: c.gain || 1.5 });
+        const { file, durMs } = ttsClip(tmpDir, n++, spec);
+        clips.push({ file, at, tempo: Math.min(1.35, Math.max(1, durMs / windowMs)), gain });
+        return durMs;
       } catch {
-        console.warn(`  (TTS unavailable for "${c.text.slice(0, 30)}…" — continuing without it)`);
+        console.warn(`  (TTS unavailable for "${spec.text.slice(0, 30)}…" — continuing without it)`);
+        return null;
       }
-    }
+    };
+    // the mascot's hook — wide window so it plays at DOG_VOICE.rate uncompressed
+    const hook = { text: HOOKS[kind], voice: DOG_VOICE.name, rate: DOG_VOICE.rate, pitch: DOG_VOICE.pitch };
 
-    if (clips.length) {
-      // bundled ffmpeg is 4.x — apad keeps every input alive for duration=first,
-      // a fixed post-gain undoes amix's 1/n scaling, alimiter tames peaks
-      const nIn = clips.length + 1;
-      const inputs = clips.flatMap(c => ['-i', c.file]);
-      const parts = clips.map((c, i) =>
-        `[${i + 1}:a]atempo=${c.tempo.toFixed(3)},volume=${c.gain},adelay=${c.at}|${c.at},apad[c${i}]`);
-      const filter = parts.join(';') + ';[0:a]' + clips.map((_, i) => `[c${i}]`).join('') +
-        `amix=inputs=${nIn}:duration=first:dropout_transition=0[m];` +
-        `[m]volume=${nIn},alimiter=limit=0.95[mix]`;
-      execFileSync(ffmpegPath(), ['-y', '-i', baseWav, ...inputs,
-        '-filter_complex', filter, '-map', '[mix]', '-ar', '44100', outWav],
-        { stdio: ['ignore', 'ignore', 'inherit'] });
+    if (kind === 'vocab') {
+      synthVocabTrack(timeline, baseWav);
+      addTts(hook, 150, 3000, 1.7);
+      // each answer: say the word, then repeat it if the window allows
+      ['b3', 'b5', 'b7'].forEach((id, i) => {
+        const a = beatOf(id);
+        const spec = { text: content.words[i].en, voice: EN_VOICE, rate: '-5%' };
+        const dur = addTts(spec, a[1] + 250, 2000, 1.6);
+        if (dur !== null && dur * 2 + 650 < a[2] - a[1] - 400) {
+          clips.push({ ...clips[clips.length - 1], at: a[1] + 250 + dur + 400 });
+        }
+      });
     } else {
-      fs.copyFileSync(baseWav, outWav);
+      synthBaseTrack(timeline, baseWav);
+      addTts(hook, 150, 3000, 1.7);
+      addTts({ text: content.q, voice: EN_VOICE, rate: '-5%' },
+        beatOf('b5')[1] + 250, beatOf('b5')[2] - beatOf('b5')[1] - 400, 1.5);
+      addTts({ text: content.a, voice: EN_VOICE, rate: '-5%' },
+        beatOf('b6')[1] + 350, beatOf('b7')[2] - beatOf('b6')[1] - 800, 1.5);
     }
+    mixClips(baseWav, clips, outWav);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -206,11 +262,22 @@ function writeSilence(outPath, totalMs) {
   fs.writeFileSync(outPath, buf);
 }
 
-function buildCaption(card) {
+function buildCaption(content) {
+  if (kind === 'vocab') {
+    const lines = content.words.map(w => `✅ ${w.en}（${w.jp}）`);
+    return [
+      `【救急英単語】きょうの3語 — ${content.cat}編、ぜんぶ言えますか？`, '',
+      ...lines, '',
+      '現場で使う救急英単語を毎日3語。声に出してマネするだけ。',
+      'アプリ「机のいらない救急英語」なら、AIの発音判定つきで練習できます。',
+      '👉 プロフィールのリンクから（ブラウザだけで動きます）', '',
+      '#救急救命士 #救急隊員 #消防士 #救急外来 #医療英語 #英語学習 #救急英語 #医療英単語 #勉強垢 #paramedic #EMT',
+    ].join('\n');
+  }
   return [
-    `【救急英語】「${card.qjp}」— 英語で言えますか？`, '',
-    `✅ ${card.q}`,
-    `🗣️ 患者さんの答え: ${card.a}（${card.ajp}）`, '',
+    `【救急英語】「${content.qjp}」— 英語で言えますか？`, '',
+    `✅ ${content.q}`,
+    `🗣️ 患者さんの答え: ${content.a}（${content.ajp}）`, '',
     '現場で使う英語問診を毎日1フレーズ。',
     'アプリ「机のいらない救急英語」なら、AIの発音判定つきで声に出して練習できます。',
     '👉 プロフィールのリンクから（ブラウザだけで動きます）', '',
@@ -219,23 +286,21 @@ function buildCaption(card) {
 }
 
 /* ---------------- main ---------------- */
-const cards = loadCards();
-const idx = pickIndex(cards, dateStr);
-const card = cards[idx];
-console.log(`Card ${idx}/${cards.length}: [${card.sceneTitle}] ${card.q}`);
+const content = kind === 'vocab' ? pickVocab() : pickCard();
 
 const outDir = path.join(HERE, 'output');
 fs.mkdirSync(outDir, { recursive: true });
-const outMp4 = arg('out', path.join(outDir, `${dateStr}.mp4`));
+const suffix = kind === 'vocab' ? '-vocab' : '';
+const outMp4 = arg('out', path.join(outDir, `${dateStr}${suffix}.mp4`));
 const outTxt = outMp4.replace(/\.mp4$/, '.txt');
 
-// audio timeline (ms) derived from the shared reel timeline
-const words = card.q.split(' ');
+// audio timeline (ms) derived from the project's shared timeline
 const timeline = {
   beats: R.BEATS.map(([id, s, e]) => [id, Math.round(s * 1000), Math.round(e * 1000)]),
   total: Math.round(R.TOTAL * 1000),
   beatTimes: R.beatTimes.map(s => Math.round(s * 1000)),
-  wordTimes: R.wordTimes(words.length).map(s => Math.round(s * 1000)),
+  wordTimes: kind === 'vocab' ? []
+    : R.wordTimes(content.q.split(' ').length).map(s => Math.round(s * 1000)),
 };
 
 ensureFont();
@@ -243,10 +308,10 @@ ensureExecutable(ffmpegPath());
 ensureExecutable(ffprobePath());
 
 console.log(silent ? 'Writing silent bed…' : 'Synthesizing audio…');
-buildAudio(card, timeline);
+buildAudio(content, timeline);
 
 if (audioOnly) {
-  console.log(`Wrote ${path.join(REEL, 'audio.wav')} — run \`cd reel && npx hyperframes preview\``);
+  console.log(`Wrote ${path.join(PROJECT, 'audio.wav')} — run \`cd ${path.basename(PROJECT)} && npx hyperframes preview\``);
   process.exit(0);
 }
 
@@ -264,15 +329,18 @@ const env = {
 const shell = headlessShellPath();
 if (shell) env.PRODUCER_HEADLESS_SHELL_PATH = shell;
 
-const variables = JSON.stringify({
-  q: card.q, qjp: card.qjp, a: card.a, ajp: card.ajp,
-});
+const variables = JSON.stringify(kind === 'vocab'
+  ? { cat: content.cat,
+      w1en: content.words[0].en, w1jp: content.words[0].jp,
+      w2en: content.words[1].en, w2jp: content.words[1].jp,
+      w3en: content.words[2].en, w3jp: content.words[2].jp }
+  : { q: content.q, qjp: content.qjp, a: content.a, ajp: content.ajp });
 
-console.log(`Rendering with HyperFrames (quality=${quality})…`);
+console.log(`Rendering with HyperFrames (kind=${kind}, quality=${quality})…`);
 const tmpVideo = path.join(outDir, `.${path.basename(outMp4, '.mp4')}.video.mp4`);
 const res = spawnSync(hf, ['render', '--quality', quality, '--fps', String(fps),
   '--strict-variables', '--variables', variables, '--output', tmpVideo],
-  { cwd: REEL, env, stdio: 'inherit' });
+  { cwd: PROJECT, env, stdio: 'inherit' });
 if (res.status !== 0) { console.error('render failed'); process.exit(res.status || 1); }
 if (!fs.existsSync(tmpVideo) || fs.statSync(tmpVideo).size === 0) {
   console.error('render produced no video'); process.exit(1);
@@ -286,7 +354,7 @@ if (!fs.existsSync(tmpVideo) || fs.statSync(tmpVideo).size === 0) {
 console.log('Muxing audio…');
 const muxArgs = silent
   ? ['-y', '-i', tmpVideo, '-c:v', 'copy', '-an', '-movflags', '+faststart', outMp4]
-  : ['-y', '-i', tmpVideo, '-i', path.join(REEL, 'audio.wav'),
+  : ['-y', '-i', tmpVideo, '-i', path.join(PROJECT, 'audio.wav'),
      '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
      '-shortest', '-movflags', '+faststart', outMp4];
 const mux = spawnSync(ffmpegPath(), muxArgs, { stdio: ['ignore', 'ignore', 'inherit'] });
@@ -295,7 +363,7 @@ if (mux.status !== 0 || !fs.existsSync(outMp4) || fs.statSync(outMp4).size === 0
   console.error('audio mux failed'); process.exit(mux.status || 1);
 }
 
-fs.writeFileSync(outTxt, buildCaption(card));
+fs.writeFileSync(outTxt, buildCaption(content));
 const mb = (fs.statSync(outMp4).size / 1e6).toFixed(1);
 console.log(`Done: ${outMp4} (${mb} MB)`);
 console.log(`Caption: ${outTxt}`);

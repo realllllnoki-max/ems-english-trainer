@@ -23,6 +23,21 @@
 | 19.4–21.4 | CTA | アプリ紹介+「プロフィールのリンクから」 |
 | 21.4–22.8 | ループブリッジ | 「言えたら🔥をコメント」→白フラッシュで先頭へ |
 
+## 動画の種類は2つ
+
+| kind | 内容 | 出力 |
+|------|------|------|
+| `phrase`(既定) | 「きょうの1フレーズ」— 問診1文＋患者の返答 | `YYYY-MM-DD.mp4` |
+| `vocab` | 「きょうの救急単語」— 3語のJP→ENクイズ(1日1カテゴリを巡回) | `YYYY-MM-DD-vocab.mp4` |
+
+```bash
+node build.mjs --kind vocab          # 単語編(アプリのVOCAB 405語・7カテゴリから)
+```
+
+単語編も同じテイスト(配色・マスコット・犬ボイスのフック・ビート同期音声・
+キネティックトランジション・保存/フォロー締め)で、英単語はネイティブTTSが
+2回読み上げます。見た目は `vocab/index.html`、尺は `vocab/timeline.js` を編集。
+
 尺は約23秒・60fps。動きは GSAP のイージング(back/expo/sine など)で駆動し、
 表示中も常に微ズーム(Ken Burns)し続け、単語のポップは104BPMのビートグリッドに
 吸着します。シーンの切り替えは**キネティックなトランジション**で繋ぎ、視聴者を
@@ -68,16 +83,17 @@ node build.mjs --silent   # 無音版(トレンド音源を後付けする用)
 
 ## 毎日のループ(自動化)
 
-`.github/workflows/daily-video.yml` が **毎朝7時(JST)** に実行され:
+`.github/workflows/daily-video.yml` が **毎朝7時(JST)** に実行され、**2本**生成します:
 
-1. その日のフレーズで動画+キャプションを生成
-2. リポジトリの **Releases →「daily-videos」** に `YYYY-MM-DD.mp4` / `.txt` をアップロード
+1. フレーズ編 `YYYY-MM-DD.mp4` と単語編 `YYYY-MM-DD-vocab.mp4`(+各キャプション `.txt`)
+2. リポジトリの **Releases →「daily-videos」** にアップロード
 
 ### 毎朝やること(1〜2分)
 
 1. スマホで GitHub の [Releases ページ](../../releases/tag/daily-videos) を開く
 2. 今日の日付の `.mp4` をダウンロード、`.txt` のキャプションをコピー
 3. TikTok / Instagram に投稿(音源をアプリ内で追加、キャプションを貼り付け)
+   — 2本とも投稿しても、どちらか1本でもOK(1日2投稿は露出にプラス)
 
 手動で今すぐ作りたいときは **Actions → Daily marketing video → Run workflow**。
 日付やカード番号(index)、無音フラグも指定できます。
