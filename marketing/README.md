@@ -83,16 +83,17 @@ node build.mjs --silent   # 無音版(トレンド音源を後付けする用)
 
 ## 毎日のループ(自動化)
 
-`.github/workflows/daily-video.yml` が **毎朝7時(JST)** に実行され:
+`.github/workflows/daily-video.yml` が **毎朝7時(JST)** に実行され、**2本**生成します:
 
-1. その日のフレーズで動画+キャプションを生成
-2. リポジトリの **Releases →「daily-videos」** に `YYYY-MM-DD.mp4` / `.txt` をアップロード
+1. フレーズ編 `YYYY-MM-DD.mp4` と単語編 `YYYY-MM-DD-vocab.mp4`(+各キャプション `.txt`)
+2. リポジトリの **Releases →「daily-videos」** にアップロード
 
 ### 毎朝やること(1〜2分)
 
 1. スマホで GitHub の [Releases ページ](../../releases/tag/daily-videos) を開く
 2. 今日の日付の `.mp4` をダウンロード、`.txt` のキャプションをコピー
 3. TikTok / Instagram に投稿(音源をアプリ内で追加、キャプションを貼り付け)
+   — 2本とも投稿しても、どちらか1本でもOK(1日2投稿は露出にプラス)
 
 手動で今すぐ作りたいときは **Actions → Daily marketing video → Run workflow**。
 日付やカード番号(index)、無音フラグも指定できます。

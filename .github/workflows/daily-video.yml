@@ -48,7 +48,7 @@ jobs:
           HYPERFRAMES_TELEMETRY_DISABLED: '1'
         run: npx hyperframes browser ensure
 
-      - name: Generate video
+      - name: Generate videos (phrase + vocab)
         working-directory: marketing
         env:
           # HyperFrames renders the video; a modern system FFmpeg handles encode + our audio mux
@@ -61,6 +61,7 @@ jobs:
           [ -n "${{ inputs.index }}" ] && ARGS="$ARGS --index ${{ inputs.index }}"
           [ "${{ inputs.silent }}" = "true" ] && ARGS="$ARGS --silent"
           node build.mjs $ARGS
+          node build.mjs $ARGS --kind vocab
 
       - name: Upload as workflow artifact
         uses: actions/upload-artifact@v4
