@@ -830,11 +830,13 @@ function judge(node,heard){
   const{sim,ops}=wordSim(tokens(node.q),tokens(heard));
   const pct=Math.round(sim*100);
   let cls,mark,label;
-  if(pct>=80){cls="ok";mark="🎉";label="すばらしい！しっかり伝わります";}
+  const isFirstQuestion=path.length===0&&passed===0;
+  const threshold=isFirstQuestion?65:80;
+  if(pct>=threshold){cls="ok";mark="🎉";label="すばらしい！しっかり伝わります";}
   else if(pct>=55){cls="mid";mark="💪";label="おしい！もう少しはっきりと";}
   else{cls="ng";mark="🔁";label="もう一度チャレンジ！";}
   const diff=ops.map(o=>o.t==="match"?`<w>${o.w}</w>`:o.t==="sub"?`<x>${o.w}</x>`:`<m>${o.w}</m>`).join(" ");
-  const pass=pct>=80;
+  const pass=pct>=threshold;
   let xpGain=0,comboLine="";
   if(pass){
     passed++;failStreak=0;combo++;
