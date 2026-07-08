@@ -26,7 +26,19 @@
 | `ems-app.js` | アプリの動作ロジック |
 | `ems-data.js` | シナリオ・単語などのデータ |
 
-## ネットで公開する（GitHub Pages）
+## ネットで公開する
+
+### 方法1：Cloudflare Pages（推奨・無料・高速）
+
+1. [Cloudflare](https://dash.cloudflare.com) のアカウントを作成
+2. **Workers & Pages → Pages → GitHub に接続**
+3. このリポジトリを選択、プロジェクト名 `ems-english-trainer` で作成
+4. デプロイ完了後、GitHub Actions で自動デプロイが有効になります
+5. （オプション）独自ドメイン取得・設定：**Custom domains** から追加
+
+以降、`main` ブランチへ push するたびに、自動的に Cloudflare Pages にデプロイされます。
+
+### 方法2：GitHub Pages
 
 このリポジトリの **Settings → Pages** で、ブランチ `main` / フォルダ `/ (root)`
 を選んで保存すると、`https://<ユーザー名>.github.io/ems-english-trainer/` で公開されます。
