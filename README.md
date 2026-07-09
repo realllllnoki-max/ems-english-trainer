@@ -28,15 +28,17 @@
 
 ## ネットで公開する
 
-### 方法1：Cloudflare Pages（推奨・無料・高速）
+### 方法1：Cloudflare Pages（推奨・無料・高速）✅ **現在の構成**
+
+公開URL: **https://nodesk-qq-english.com/**
 
 1. [Cloudflare](https://dash.cloudflare.com) のアカウントを作成
 2. **Workers & Pages → Pages → GitHub に接続**
 3. このリポジトリを選択、プロジェクト名 `ems-english-trainer` で作成
-4. デプロイ完了後、GitHub Actions で自動デプロイが有効になります
-5. （オプション）独自ドメイン取得・設定：**Custom domains** から追加
+4. デプロイ完了後、自動で Cloudflare Pages にデプロイされます
+5. 独自ドメイン取得・設定：**Custom domains** から追加
 
-以降、`main` ブランチへ push するたびに、自動的に Cloudflare Pages にデプロイされます。
+以降、`main` ブランチへ push するたびに、自動的にデプロイされます。
 
 ### 方法2：GitHub Pages
 
