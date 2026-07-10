@@ -2,23 +2,25 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<!-- 初回のクリーンな訪問はLP(lp.html)を先に表示する。以降のリソース読込より前に判定する -->
+<!-- 無料・匿名ユーザーはLP(lp.html)を先に表示する。以降のリソース読込より前に判定する -->
 <script>
 (function () {
   try {
-    // 一度アプリに入ったことがあれば、以降はLPを挟まない
-    if (localStorage.getItem("ems_entered") === "1") return;
+    // Pro（課金済み）ユーザーはLPを飛ばして直接アプリへ。
+    // 有料判定の正本はサーバーだが、ここでは端末に控えた直近値(ems_pro_cache_v1)を同期的に参照する。
+    var pro = false;
+    try {
+      var d = JSON.parse(localStorage.getItem("ems_pro_cache_v1") || "null");
+      pro = !!(d && d.pro);
+    } catch (e) {}
     var standalone =
       (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
       window.navigator.standalone === true;
     // クエリ/ハッシュが付く訪問（LPのCTA ?from=lp・OAuth戻り #access_token/?code・決済戻り ?checkout=…）は
     // アプリへ入る扱いにする
     var clean = !location.search && (location.hash === "" || location.hash === "#");
-    if (standalone || !clean) {
-      localStorage.setItem("ems_entered", "1");
-      return;
-    }
-    // 初回のクリーンなブラウザ訪問のみLPへ
+    // Pro・PWA起動・各種コールバックはアプリへ。それ以外（無料/匿名のクリーン訪問）は毎回LPへ。
+    if (pro || standalone || !clean) return;
     location.replace("lp.html");
   } catch (e) {}
 })();
