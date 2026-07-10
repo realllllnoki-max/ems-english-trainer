@@ -27,8 +27,8 @@
   .pill {
     position:absolute; top:64px; left:50%; transform:translateX(-50%);
     background:linear-gradient(90deg,#ff4b4b,#ff6b35);
-    color:#fff; font-size:31px; font-weight:700; letter-spacing:.04em;
-    padding:15px 38px; border-radius:20px; white-space:nowrap;
+    color:#fff; font-size:29px; font-weight:700; letter-spacing:.02em;
+    padding:15px 36px; border-radius:20px; white-space:nowrap;
     box-shadow:0 8px 22px rgba(255,75,75,.30);
   }
 
@@ -48,7 +48,7 @@
   .feat:nth-child(3) .c { background:#fff5d6; }
   .feat .t { font-size:26px; font-weight:700; color:#3c3c3c; white-space:nowrap; }
 
-  /* ── phone mockup ─────────────────────── */
+  /* ── phone mockup(実アプリのスクリーンショットを表示) ── */
   .phone {
     position:absolute; top:680px; left:322px; width:436px; height:900px;
     background:#3a3d42; border-radius:66px; padding:14px;
@@ -60,50 +60,8 @@
     position:absolute; top:12px; left:50%; transform:translateX(-50%);
     width:120px; height:31px; background:#111; border-radius:16px; z-index:9;
   }
-  .status { display:flex; justify-content:space-between; align-items:center; padding:16px 32px 2px; font-size:20px; font-weight:700; }
-  .apphead { display:flex; justify-content:space-between; align-items:center; padding:14px 22px 8px; }
-  .apphead .date { font-size:17px; font-weight:700; color:#8a8a8a; }
-  .apphead .title { font-size:22px; font-weight:900; }
-  .apphead .streak { font-size:18px; font-weight:900; color:#ff9600; background:#fff5d6; border-radius:14px; padding:4px 12px; }
-  .chips { display:flex; gap:9px; padding:8px 22px 12px; }
-  .chip { font-size:16px; font-weight:700; color:#6b6b6b; background:#f1f2f4; border-radius:17px; padding:7px 17px; }
-  .chip.on { color:#fff; background:linear-gradient(90deg,#ff4b4b,#ff6b35); }
-
-  .card { margin:2px 18px 14px; border:2px solid #eceff2; border-radius:22px; padding:16px 18px; box-shadow:0 4px 14px rgba(38,48,62,.05); background:#fff; }
-  .tags { display:flex; gap:9px; align-items:center; margin-bottom:10px; }
-  .tag-red { font-size:15px; font-weight:800; color:#ea2b2b; background:#ffdfe0; border-radius:12px; padding:4px 12px; }
-  .tag-gray { font-size:15px; font-weight:800; color:#6b6b6b; background:#f1f2f4; border-radius:12px; padding:4px 12px; }
-  .label { font-size:15px; font-weight:700; color:#8a8a8a; margin-bottom:6px; }
-  .en { font-size:27px; font-weight:900; line-height:1.3; }
-  .jp { font-size:17px; font-weight:700; color:#6b6b6b; margin-top:6px; }
-  .microw { display:flex; align-items:center; gap:14px; margin-top:14px; }
-  .wave { display:flex; align-items:center; gap:6px; flex:1; }
-  .wave i { display:block; width:6px; border-radius:3px; background:#ff8a80; }
-  .mic {
-    width:64px; height:64px; border-radius:50%; flex:0 0 auto;
-    background:linear-gradient(140deg,#ff6b5e,#ff4b4b); display:flex; align-items:center; justify-content:center;
-    box-shadow:0 6px 14px rgba(255,75,75,.42);
-  }
-  .score { margin-top:14px; background:#d7ffb8; border-radius:14px; padding:9px 15px; display:flex; align-items:center; gap:9px; font-size:18px; font-weight:900; color:#46a302; white-space:nowrap; }
-  .score .xp { margin-left:auto; color:#e6a800; }
-
-  .card2 { margin:0 18px; border:2px solid #eceff2; border-radius:22px 22px 0 0; border-bottom:none; padding:14px 18px 8px; }
-  .opts { display:flex; gap:10px; margin-top:10px; }
-  .opt { font-size:16px; font-weight:800; border:2px solid #e5e5e5; border-radius:14px; padding:8px 15px; color:#3c3c3c; white-space:nowrap; }
-  .opt.ok { border-color:#58cc02; color:#46a302; background:#f2ffe6; }
-
-  .nav {
-    position:absolute; bottom:0; left:0; right:0; height:80px; background:#fff;
-    border-top:2px solid #eef0f2; display:flex; align-items:center; justify-content:space-around; padding:0 14px;
-  }
-  .nav .ic { font-size:28px; opacity:.45; }
-  .nav .ic.on { opacity:1; }
-  .nav .plus {
-    width:62px; height:62px; border-radius:50%; margin-top:-26px;
-    background:linear-gradient(140deg,#ff6b5e,#ff4b4b 60%,#ff8a3d);
-    display:flex; align-items:center; justify-content:center;
-    box-shadow:0 8px 18px rgba(255,75,75,.45);
-  }
+  .sbar { height:56px; display:flex; justify-content:space-between; align-items:center; padding:14px 32px 0; font-size:20px; font-weight:700; background:#fff; }
+  .shot { display:block; width:408px; height:816px; object-fit:cover; object-position:top; }
 
   .bubble {
     position:absolute; top:1300px; left:766px; width:216px; height:216px; border-radius:50%;
@@ -154,7 +112,7 @@
 </head>
 <body>
 
-  <div class="pill">その問診、英語で言えますか?</div>
+  <div class="pill">英語の傷病者、自信を持って問診できますか?</div>
 
   <div class="headline">
     <div class="l1">机のいらない</div>
@@ -162,7 +120,7 @@
   </div>
 
   <div class="feats">
-    <div class="feat"><div class="c">🎤</div><div class="t">発音判定</div></div>
+    <div class="feat"><div class="c">🎙️</div><div class="t">発音AI判定</div></div>
     <div class="feat"><div class="c">🔀</div><div class="t">分岐シナリオ</div></div>
     <div class="feat"><div class="c">🔤</div><div class="t">単語クイズ</div></div>
   </div>
@@ -170,55 +128,21 @@
   <div class="phone">
     <div class="screen">
       <div class="notch"></div>
-      <div class="status">
+      <div class="sbar">
         <span>9:41</span>
         <span style="display:flex;gap:7px;align-items:center;">
           <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3.5" height="5" rx="1" fill="#111"/><rect x="5.5" y="6" width="3.5" height="8" rx="1" fill="#111"/><rect x="11" y="3" width="3.5" height="11" rx="1" fill="#111"/><rect x="16.5" y="0" width="3.5" height="14" rx="1" fill="#111"/></svg>
           <svg width="24" height="14" viewBox="0 0 26 14"><rect x="0" y="0" width="22" height="13" rx="3.5" stroke="#111" stroke-width="1.6" fill="none"/><rect x="2.2" y="2.2" width="15" height="8.6" rx="1.8" fill="#111"/><rect x="23.4" y="4" width="2.4" height="5" rx="1.2" fill="#111"/></svg>
         </span>
       </div>
-      <div class="apphead">
-        <span class="date">7月10日(金)</span>
-        <span class="title">きょうのレッスン</span>
-        <span class="streak">🔥 7</span>
-      </div>
-      <div class="chips">
-        <span class="chip on">問診</span><span class="chip">単語</span><span class="chip">シナリオ</span><span class="chip">復習</span>
-      </div>
-
-      <div class="card">
-        <div class="tags"><span class="tag-red">🚑 胸痛 | Chest Pain</span><span class="tag-gray">Lv.3</span></div>
-        <div class="label">きょうの1フレーズ — 声に出して</div>
-        <div class="en">When did the chest pain start?</div>
-        <div class="jp">胸の痛みは、いつ始まりましたか?</div>
-        <div class="microw">
-          <div class="wave">
-            <i style="height:12px"></i><i style="height:22px"></i><i style="height:34px"></i><i style="height:18px"></i><i style="height:40px"></i><i style="height:26px"></i><i style="height:44px"></i><i style="height:16px"></i><i style="height:30px"></i><i style="height:38px"></i><i style="height:14px"></i><i style="height:24px"></i><i style="height:34px"></i><i style="height:12px"></i><i style="height:20px"></i>
-          </div>
-          <div class="mic"><svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M18.5 11a.9.9 0 0 0-1.8 0 4.7 4.7 0 0 1-9.4 0 .9.9 0 0 0-1.8 0 6.5 6.5 0 0 0 5.6 6.4V20h-2a.9.9 0 1 0 0 1.8h5.8a.9.9 0 1 0 0-1.8h-2v-2.6A6.5 6.5 0 0 0 18.5 11z"/></svg></div>
-        </div>
-        <div class="score">⭐ GREAT! 発音スコア 92点 <span class="xp">⚡ +10 XP</span></div>
-      </div>
-
-      <div class="card2">
-        <div class="tags"><span class="tag-gray">🔤 単語クイズ</span></div>
-        <div class="en" style="font-size:21px;">「意識」を英語で?</div>
-        <div class="opts"><span class="opt ok">consciousness</span><span class="opt">breathing</span></div>
-        <div class="opts"><span class="opt">pressure</span><span class="opt">injury</span></div>
-      </div>
-
-      <div class="nav">
-        <span class="ic on">🏠</span><span class="ic">📖</span>
-        <span class="plus"><svg width="27" height="27" viewBox="0 0 24 24" fill="#fff"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M18.5 11a.9.9 0 0 0-1.8 0 4.7 4.7 0 0 1-9.4 0 .9.9 0 0 0-1.8 0 6.5 6.5 0 0 0 5.6 6.4V20h-2a.9.9 0 1 0 0 1.8h5.8a.9.9 0 1 0 0-1.8h-2v-2.6A6.5 6.5 0 0 0 18.5 11z"/></svg></span>
-        <span class="ic">🏆</span><span class="ic">👤</span>
-      </div>
+      <img class="shot" src="screens/judge.png" alt="">
     </div>
   </div>
 
   <img class="mascot" src="../../logo.png" alt="">
-  <div class="bubble"><span class="s">学習は</span><span class="b">1日3分</span><span class="s">だけ!</span></div>
+  <div class="bubble"><span class="s">登録不要</span><span class="b">毎日1問</span><span class="s">無料で練習</span></div>
 
-  <div class="sub">救急隊の「伝わらない」をなくす場所</div>
+  <div class="sub">救急隊のための英語問診トレーナー</div>
 
   <div class="cta">
     <div class="icon"><img src="../../logo.png" alt=""></div>
@@ -228,11 +152,11 @@
     </div>
     <div class="badges">
       <div class="badge"><span class="bi">🌐</span><span class="bt">ブラウザで開くだけ</span></div>
-      <div class="badge"><span class="bi">📲</span><span class="bt">アプリ不要・無料で始められる</span></div>
+      <div class="badge"><span class="bi">📲</span><span class="bt">登録不要・毎日1問無料</span></div>
     </div>
   </div>
 
-  <div class="band">今すぐ無料で始めよう!</div>
+  <div class="band">無料で1問やってみる!</div>
 
 </body>
 </html>
