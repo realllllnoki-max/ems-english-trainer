@@ -1,6 +1,9 @@
 /* ================= EMS AUTH (Supabase) =================
- * メールログイン（メール＋パスワード）＋ Google ログイン。
- * ゲストでは無料の1問をプレイ可能。有料化するときだけログイン。
+ * メールログイン（メール＋パスワード）＋ Googleログイン（OAuth）。
+ * Googleは signInWithOAuth でGoogleへページ遷移→戻ってきたURLから
+ * supabase-js がセッションを復元する（detectSessionInUrl 既定動作）。
+ * ※Supabase側で Google プロバイダの有効化が必要（GOOGLE-LOGIN-SETUP.md 参照）
+ * ゲストでは無料枠をプレイ可能。有料化するときだけログイン。
  * 公開して安全な値のみ（URL / publishable key）をここに置く。
  * service role などのサーバー専用キーは絶対に置かない。
  * ====================================================== */
@@ -83,6 +86,13 @@
     // 既存セッションの復元＋状態変化の監視
     EMSAuth.client.auth.getUser().then(function (res) {
       EMSAuth.user = (res && res.data && res.data.user) || null;
+      // Googleログインからの戻りを検知して計測（リダイレクトを跨ぐためlocalStorageで橋渡し）
+      try {
+        if (localStorage.getItem(GOOGLE_FLAG)) {
+          localStorage.removeItem(GOOGLE_FLAG);
+          if (EMSAuth.user) track("auth_success", { mode: "google" });
+        }
+      } catch (e) {}
       renderHeader(); EMSAuth._emit(); refreshPro();
     });
     EMSAuth.client.auth.onAuthStateChange(function (_event, session) {
@@ -151,6 +161,31 @@
   /* ---------- 送信 ---------- */
   function track(ev, p) { try { if (window.emsTrack) window.emsTrack(ev, p); } catch (e) {} }
 
+  /* ---------- Googleログイン ---------- */
+  var GOOGLE_FLAG = "ems_google_login"; // リダイレクト前に立て、戻ってきたら計測して消す
+  function signInWithGoogle() {
+    if (!EMSAuth.client) { setMsg("ログイン機能を読み込めませんでした", "err"); return; }
+    track("auth_submit", { mode: "google", context: EMSAuth._context });
+    try { localStorage.setItem(GOOGLE_FLAG, "1"); } catch (e) {}
+    busy(true);
+    setMsg("Googleに移動しています…");
+    EMSAuth.client.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: location.origin + location.pathname }
+    }).then(function (res) {
+      // 成功時はGoogleへページ遷移するため busy は解除しない
+      if (res && res.error) {
+        busy(false);
+        try { localStorage.removeItem(GOOGLE_FLAG); } catch (e) {}
+        setMsg("Googleログインを開始できませんでした。通信環境をご確認ください", "err");
+      }
+    }).catch(function () {
+      busy(false);
+      try { localStorage.removeItem(GOOGLE_FLAG); } catch (e) {}
+      setMsg("Googleログインを開始できませんでした。通信環境をご確認ください", "err");
+    });
+  }
+
   function onSubmit() {
     if (!EMSAuth.client) return;
     var email = (emailEl.value || "").trim();
@@ -180,31 +215,6 @@
       closeModal();
     }).catch(function (err) {
       busy(false);
-      setMsg(jpError(err), "err");
-    });
-  }
-
-  // Google OAuth。ページごと Google へ遷移し、認証後にアプリへ戻ってくる。
-  // 決済途中だった場合は ems-paywall.js が localStorage（pending checkout）から
-  // 自動で Checkout を再開するので、ここでは何もしなくてよい。
-  function signInWithGoogle() {
-    if (!EMSAuth.client) return;
-    var gg = $("authGoogle");
-    if (gg) gg.disabled = true;
-    track("auth_google_start", { context: EMSAuth._context });
-    setMsg("Googleに移動しています…", "ok");
-    EMSAuth.client.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: location.origin + location.pathname }
-    }).then(function (res) {
-      if (res && res.error) {
-        if (gg) gg.disabled = false;
-        track("auth_error", { mode: "google" });
-        setMsg(jpError(res.error), "err");
-      }
-      // 成功時はこのままGoogleへページ遷移するため、何もしない
-    }).catch(function (err) {
-      if (gg) gg.disabled = false;
       setMsg(jpError(err), "err");
     });
   }
