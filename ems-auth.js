@@ -229,7 +229,12 @@
     var email = (emailEl.value || "").trim();
     var pass = passEl.value || "";
     if (!email) { setMsg("メールアドレスを入力してください", "err"); return; }
-    if (pass.length < 6) { setMsg("パスワードは6文字以上で入力してください", "err"); return; }
+    if (!pass) { setMsg("パスワードを入力してください", "err"); return; }
+    // 新規登録は Supabase 側ポリシー（8文字以上＋英字と数字）に合わせて事前チェック。
+    // ログインは既存アカウント（旧ポリシー時代の短いパスワード）を弾かないよう非空のみ。
+    if (mode === "signup" && !/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(pass)) {
+      setMsg("パスワードは8文字以上で、英字と数字を含めてください", "err"); return;
+    }
 
     track("auth_submit", { mode: mode, context: EMSAuth._context });
     busy(true);
@@ -284,7 +289,7 @@
     if (/already registered|User already/i.test(m)) return "このメールアドレスは既に登録されています";
     if (/Email not confirmed/i.test(m)) return "メール確認が完了していません。受信メールのリンクを開いてください";
     if (/rate limit|too many/i.test(m)) return "回数制限です。しばらくしてからお試しください";
-    if (/Password should be/i.test(m)) return "パスワードは6文字以上にしてください";
+    if (/weak.?password|Password should be/i.test(m)) return "パスワードは8文字以上で、英字と数字を含めてください";
     return m || "エラーが発生しました。もう一度お試しください";
   }
 })();

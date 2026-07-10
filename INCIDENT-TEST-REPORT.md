@@ -14,11 +14,18 @@
   0:47 の設定リロード後、0:48 のログインは成功しており**現在は復旧済み**。
   → 教訓: シークレット更新時は直後に実ログインで確認する。フロント側のエラー表示（#31）は有効に機能する状態。
 
-### 🟡 要対応（設定）
-- **漏洩パスワード保護が無効**（Security Advisor WARN）。← **未対応（要手動）**
-  MCPからは変更できない設定のため、ダッシュボードでの操作が必要:
-  Authentication → Sign In / Providers → Password（または Policies）→ "Leaked password protection" を ON。
-  https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+### 🟡 パスワード強度（対応済み・一部は受容）
+- **漏洩パスワード保護（HaveIBeenPwned）は Pro プラン限定**のため、Free プランの本番では
+  有効化できないと判明 → **受容**（Advisor の WARN は残るが、主導線は Google ログインで
+  影響は限定的）。将来 Pro 化する際に有効化する。
+- 代替として **Free で可能なパスワード強度を強化済み**（Auth → Sign In / Providers → Email）:
+  - Minimum password length: 6 → **8**
+  - Password requirements: **Letters and digits（英字＋数字必須）**
+  - 反映確認: 弱いパスワード（数字7桁）での signup は `weak_password`（length/characters）で
+    サーバー拒否されることを実地確認済み。
+- フロント（`ems-auth.js` v8）も新ポリシーに追従:
+  新規登録は「8文字以上＋英字と数字」を事前チェック、エラーメッセージも更新
+  （ログインは旧アカウントを弾かないよう非空チェックのみ）。
 
 ### ✅ 追加調査・対応で解消した項目
 - **リポジトリに無い Edge Functions 5つ**（`verify-prices` / `verify-cancel-flow` /
@@ -111,7 +118,9 @@ npm test   # 6シナリオ、約1分
 - ✅ 検証用 Edge Functions 5つが無効化済みスタブであることを確認（リスクなし）
 
 ### 手動対応が必要（Claude のツールでは実行不可）
-1. **漏洩パスワード保護の有効化** — Supabase ダッシュボードの Auth 設定トグル
-2. （任意）無効化済み検証用 Function 5つの削除 — `supabase functions delete <name>` または dashboard
-3. **実Stripe（テストモード）での通し確認** — `stripe trigger checkout.session.completed` /
+1. **実Stripe（テストモード）での通し確認** — `stripe trigger checkout.session.completed` /
    `stripe listen` でWebhook反映を実地確認。フロントの決済戻り挙動もあわせて確認
+
+### 任意・将来
+- 漏洩パスワード保護は Pro 化のタイミングで有効化（現状は受容）
+- 無効化済み検証用 Function 5つの削除（見た目の整理のみ、`supabase functions delete <name>`）
