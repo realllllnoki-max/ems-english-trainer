@@ -51,7 +51,13 @@ const args = process.argv.slice(2);
 const arg = (name, fb) => { const i = args.indexOf('--' + name); return i >= 0 ? args[i + 1] : fb; };
 const kind = arg('kind', 'phrase');
 if (!['phrase', 'vocab'].includes(kind)) { console.error(`unknown --kind ${kind}`); process.exit(1); }
-const dateStr = arg('date', new Date().toISOString().slice(0, 10));
+// Calculate date in JST (UTC+9). At 7 AM JST, UTC is still 10 PM of prior day, so we need to add 9 hours.
+const getJSTDateString = () => {
+  const now = new Date();
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return jst.toISOString().slice(0, 10);
+};
+const dateStr = arg('date', getJSTDateString());
 const forcedIndex = arg('index', null);
 const quality = arg('quality', 'high');
 const fps = arg('fps', '60'); // 60fps for premium smoothness (data-fps is only a hint to the renderer)
