@@ -83,6 +83,19 @@
 
     if (!EMSAuth.client) { renderHeader(); return; } // SDK読み込み失敗時もゲスト表示（ボタン非表示）にする
 
+    // OAuth リダイレクトがエラーで戻ってきた場合（#error=...）、無言でホームに
+    // 戻すのではなくログインモーダルにエラーを表示する（原因調査を容易にする）
+    try {
+      var hp = new URLSearchParams((location.hash || "").replace(/^#/, ""));
+      var oerr = hp.get("error_description") || hp.get("error");
+      if (oerr) {
+        try { history.replaceState(null, "", location.pathname + location.search); } catch (e2) {}
+        track("auth_error", { mode: "google", detail: String(oerr).slice(0, 120) });
+        openModal();
+        setMsg("Googleログインに失敗しました：" + oerr, "err");
+      }
+    } catch (e) {}
+
     // 既存セッションの復元＋状態変化の監視
     EMSAuth.client.auth.getUser().then(function (res) {
       EMSAuth.user = (res && res.data && res.data.user) || null;
