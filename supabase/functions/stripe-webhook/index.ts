@@ -36,10 +36,31 @@ Deno.serve(async (req) => {
   const subHasOurPrice = (sub: Stripe.Subscription) =>
     (sub.items?.data || []).some((it) => !!it.price?.id && ourPrices.has(it.price.id));
 
-  const setPro = async (customerId: string, isPro: boolean, periodEnd?: number | null) => {
+  // 課金状態の反映。失敗や対象0件を握りつぶすと Stripe が成功扱いにして
+  // リトライされず「支払済みなのに Pro にならない」が恒久化するため、throw して 500 を返す。
+  // stripe_customer_id で見つからない場合は metadata の supabase_user_id にフォールバック。
+  const setPro = async (
+    customerId: string,
+    isPro: boolean,
+    periodEnd?: number | null,
+    fallbackUserId?: string | null,
+  ) => {
     const upd: Record<string, unknown> = { is_pro: isPro };
     if (periodEnd) upd.current_period_end = new Date(periodEnd * 1000).toISOString();
-    await admin.from("profiles").update(upd).eq("stripe_customer_id", customerId);
+    const { data, error } = await admin
+      .from("profiles").update(upd).eq("stripe_customer_id", customerId).select("id");
+    if (error) throw new Error(`profiles_update_failed: ${error.message}`);
+    if (data && data.length > 0) return;
+    if (fallbackUserId) {
+      const { data: d2, error: e2 } = await admin
+        .from("profiles")
+        .update({ ...upd, stripe_customer_id: customerId })
+        .eq("id", fallbackUserId)
+        .select("id");
+      if (e2) throw new Error(`profiles_update_failed(fallback): ${e2.message}`);
+      if (d2 && d2.length > 0) return;
+    }
+    throw new Error(`profile_not_found: customer=${customerId}`);
   };
 
   try {
@@ -50,7 +71,12 @@ Deno.serve(async (req) => {
           const sub = await stripe.subscriptions.retrieve(s.subscription as string);
           if (subHasOurPrice(sub)) {
             const active = sub.status === "active" || sub.status === "trialing";
-            await setPro(s.customer as string, active, sub.current_period_end);
+            await setPro(
+              s.customer as string,
+              active,
+              sub.current_period_end,
+              s.client_reference_id || sub.metadata?.supabase_user_id || null,
+            );
           }
         }
         break;
@@ -60,7 +86,12 @@ Deno.serve(async (req) => {
         const sub = event.data.object as Stripe.Subscription;
         if (subHasOurPrice(sub)) {
           const active = sub.status === "active" || sub.status === "trialing";
-          await setPro(sub.customer as string, active, sub.current_period_end);
+          await setPro(
+            sub.customer as string,
+            active,
+            sub.current_period_end,
+            sub.metadata?.supabase_user_id || null,
+          );
         }
         break;
       }
@@ -73,6 +104,7 @@ Deno.serve(async (req) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
+    console.error(`[stripe-webhook] ${event.type}: ${(e as Error).message}`);
     return new Response(`handler_error: ${(e as Error).message}`, { status: 500 });
   }
 });

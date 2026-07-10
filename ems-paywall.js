@@ -198,7 +198,22 @@
         body: { returnUrl: baseUrl(), plan: selectedPlan },
         headers: { Authorization: "Bearer " + session.access_token }
       });
-      if (r.error) throw r.error;
+      if (r.error) {
+        // サーバーが返した理由コードを取り出す（already_pro = 二重課金ガード）
+        var code = null;
+        try {
+          var body = r.error.context && (await r.error.context.json());
+          code = body && body.error;
+        } catch (e2) {}
+        if (code === "already_pro") {
+          busy(false);
+          setPayMsg("すでにProプランをご利用中です 🎉", "ok");
+          a.refreshPro && a.refreshPro();
+          setTimeout(function () { closePay(); }, 2000);
+          return;
+        }
+        throw r.error;
+      }
       var url = r.data && r.data.url;
       if (url) { location.href = url; return; } // 遷移するので busy は解除しない
       busy(false);
@@ -260,6 +275,39 @@
     toastT = setTimeout(function () { el.classList.remove("on"); }, ms || 3200);
   }
 
+  /* ---------- 決済後の is_pro 反映待ち ----------
+   * Webhook 反映は非同期。約30秒ポーリングし、それでも反映されなければ
+   * 「再度確認」ボタンでポーリングを再開できるようにする（再読込不要）。 */
+  var POLL_MS = window.__EMS_POLL_MS || 2500; // テストから間隔を短縮できる
+  function pollProAfterCheckout() {
+    setPayMsg("💳 決済が完了しました\n反映中です...");
+    var tries = 0;
+    var maxTries = 12;
+    var iv = setInterval(function () {
+      tries++;
+      var remaining = Math.max(0, Math.ceil((maxTries - tries) * POLL_MS / 1000));
+      if (auth() && auth().refreshPro) {
+        auth().refreshPro().then(function (isPro) {
+          if (isPro) {
+            clearInterval(iv);
+            setPayMsg("🎉 Proが有効になりました！\n全機能が使えます", "ok");
+            setTimeout(function () { closePay(); }, 2000);
+          } else if (tries < maxTries) {
+            setPayMsg("💳 決済が完了しました\n反映中です... (" + remaining + "秒)");
+          }
+        }).catch(function () {
+          if (tries < maxTries) {
+            setPayMsg("💳 決済が完了しました\n反映中です... (" + remaining + "秒)");
+          }
+        });
+      }
+      if (tries >= maxTries) {
+        clearInterval(iv);
+        setPayMsg("反映に時間がかかっています。\n少し待ってから下のボタンで確認してください。", "err", pollProAfterCheckout);
+      }
+    }, POLL_MS);
+  }
+
   /* ---------- 決済からの戻り処理 ---------- */
   function handleReturn() {
     var q = new URLSearchParams(location.search);
@@ -271,35 +319,7 @@
       clearPending();
       track("purchase_success", {});
       openPay();
-      setPayMsg("💳 決済が完了しました\n反映中です...");
-      // Webhook 反映は非同期。数回 is_pro を再取得してUIを更新
-      var tries = 0;
-      var maxTries = 6;
-      var iv = setInterval(function () {
-        tries++;
-        var remaining = Math.max(0, (maxTries - tries) * 2.5);
-        if (auth() && auth().refreshPro) {
-          auth().refreshPro().then(function (isPro) {
-            if (isPro) {
-              clearInterval(iv);
-              setPayMsg("🎉 Proが有効になりました！\n全機能が使えます", "ok");
-              setTimeout(function () { closePay(); }, 2000);
-            } else if (tries < maxTries) {
-              var sec = Math.ceil(remaining);
-              setPayMsg("💳 決済が完了しました\n反映中です... (" + sec + "秒)");
-            }
-          }).catch(function () {
-            if (tries < maxTries) {
-              var sec = Math.ceil(remaining);
-              setPayMsg("💳 決済が完了しました\n反映中です... (" + sec + "秒)");
-            }
-          });
-        }
-        if (tries >= maxTries) {
-          clearInterval(iv);
-          setPayMsg("反映に時間がかかっています。\nしばらくしてから、ページを再読込してください。", "err");
-        }
-      }, 2500);
+      pollProAfterCheckout();
     } else if (co === "cancel") {
       track("checkout_cancel", {});
       toast("購入はキャンセルされました");

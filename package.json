@@ -1,0 +1,11 @@
+{
+  "name": "ems-english-trainer",
+  "private": true,
+  "description": "机のいらない救急英語 — 障害注入テスト（Playwright）",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
