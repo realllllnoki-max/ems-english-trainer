@@ -15,14 +15,22 @@
   → 教訓: シークレット更新時は直後に実ログインで確認する。フロント側のエラー表示（#31）は有効に機能する状態。
 
 ### 🟡 要対応（設定）
-- **漏洩パスワード保護が無効**（Security Advisor WARN）。
-  ダッシュボード → Authentication → Passwords で有効化を推奨。
+- **漏洩パスワード保護が無効**（Security Advisor WARN）。← **未対応（要手動）**
+  MCPからは変更できない設定のため、ダッシュボードでの操作が必要:
+  Authentication → Sign In / Providers → Password（または Policies）→ "Leaked password protection" を ON。
   https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
-- **リポジトリに無い Edge Functions が本番に5つ残存**:
-  `verify-prices` / `verify-cancel-flow` / `verify-gen-otp` / `setup-live-stripe` / `verify-live-config`。
-  過去のセットアップ・検証用の残骸とみられる。攻撃面を減らすため、不要なら削除を推奨。
-- **app_events の RLS ポリシーが行ごとに auth関数を再評価**（Performance Advisor WARN）。
-  `auth.uid()` → `(select auth.uid())` への書き換えでスケール時の性能劣化を防げる（現状の規模では実害なし）。
+
+### ✅ 追加調査・対応で解消した項目
+- **リポジトリに無い Edge Functions 5つ**（`verify-prices` / `verify-cancel-flow` /
+  `verify-gen-otp` / `setup-live-stripe` / `verify-live-config`）を精査したところ、
+  **すべて既に無効化済みの空スタブ**（`Deno.serve(() => new Response("gone", { status: 410 }))`）で、
+  **セキュリティリスクはなし**。削除は見た目の整理のみで任意（MCPに削除APIが無く、
+  削除するなら `supabase functions delete <name>` またはダッシュボードから）。
+- **app_events の RLS ポリシーが行ごとに auth関数を再評価**（Performance Advisor WARN）
+  → `(select auth.uid())` に変更して**解消済み**（マイグレーション
+  `20260710000000_app_events_rls_perf.sql`、本番適用済み）。
+  残る Performance INFO 2件（app_events の未使用インデックス）は、レポート下部の
+  ファネル集計SQL用に意図的に張ったものなので保持。
 
 ### 🟢 問題なし
 - DB: `profiles` / `user_progress` / `app_events` すべて RLS 有効・ポリシー妥当（本人のみ読み書き）。
@@ -67,9 +75,10 @@
   - `refreshPro` 失敗時に最後に確認できた値を維持（誤ロック防止）
 - `sw.js`: キャッシュ v9 に更新
 
-> ⚠️ **Edge Functions はデプロイが必要**: マージ後に
-> `supabase functions deploy stripe-webhook create-checkout-session` を実行すること
-> （フロントは main への push で Cloudflare Pages が自動デプロイ）。
+> ✅ **Edge Functions は本番へデプロイ済み**（2026-07-10）:
+> `create-checkout-session` v21 / `stripe-webhook` v19。疎通確認済み
+> （GET→405 / 認証なしPOST→401 / 署名なしPOST→400）。
+> フロント（ems-*.js, index.html）は main へのマージで Cloudflare Pages が自動デプロイ。
 
 ---
 
@@ -94,9 +103,15 @@ npm test   # 6シナリオ、約1分
 
 ---
 
-## 5. 残タスク（推奨）
+## 5. 残タスク
 
-1. 漏洩パスワード保護の有効化（ダッシュボード設定のみ）
-2. 本番に残った検証用 Edge Functions 5つの削除
-3. マージ後の `supabase functions deploy stripe-webhook create-checkout-session`
-4. 実Stripe（テストモード）での通し確認: `stripe trigger checkout.session.completed` 等
+### Claude が実施済み（2026-07-10 追記）
+- ✅ Edge Functions を本番デプロイ（checkout v21 / webhook v19）＋疎通確認
+- ✅ app_events RLS の性能改善マイグレーションを本番適用
+- ✅ 検証用 Edge Functions 5つが無効化済みスタブであることを確認（リスクなし）
+
+### 手動対応が必要（Claude のツールでは実行不可）
+1. **漏洩パスワード保護の有効化** — Supabase ダッシュボードの Auth 設定トグル
+2. （任意）無効化済み検証用 Function 5つの削除 — `supabase functions delete <name>` または dashboard
+3. **実Stripe（テストモード）での通し確認** — `stripe trigger checkout.session.completed` /
+   `stripe listen` でWebhook反映を実地確認。フロントの決済戻り挙動もあわせて確認
