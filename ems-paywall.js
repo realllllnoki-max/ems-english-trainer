@@ -368,9 +368,24 @@
         if (!user || pro()) { return; }
         var saved = loadPending();
         if (!_pendingCheckout && !saved) return;
-        if (saved && saved.plan) selectedPlan = saved.plan; // 選んでいたプランを復元
+        if (saved && saved.plan) { // 選んでいたプランを復元（UIのハイライトも同期）
+          selectedPlan = saved.plan;
+          var box = $("planOpts");
+          if (box) {
+            var opts = box.querySelectorAll(".plan-opt");
+            for (var i = 0; i < opts.length; i++) {
+              opts[i].classList.toggle("on", (opts[i].getAttribute("data-plan") || "") === saved.plan);
+            }
+          }
+        }
         clearPending();
         openPay();
+        // 同意チェックは決済開始時（savePending 前）に確認済み。OAuth やメール確認の
+        // リダイレクトを跨ぐとチェックが未選択に戻り、startCheckout が同意エラーで
+        // 止まってしまうため、ここで同意済み状態を復元する。
+        var chk = $("payAgreeChk"), go = $("payGo");
+        if (chk) chk.checked = true;
+        if (go) go.disabled = false;
         setPayMsg("決済ページを準備しています…");
         setTimeout(function () { startCheckout(); }, 400);
       });
