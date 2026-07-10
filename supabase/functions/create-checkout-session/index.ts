@@ -54,7 +54,11 @@ Deno.serve(async (req) => {
 
     // Stripe顧客を取得 or 作成して profiles に紐付け
     const { data: prof } = await admin
-      .from("profiles").select("stripe_customer_id").eq("id", user.id).single();
+      .from("profiles").select("stripe_customer_id, is_pro").eq("id", user.id).maybeSingle();
+
+    // 既にProのユーザーに2本目のサブスクを作らせない（二重課金ガード）
+    if (prof?.is_pro) return json({ error: "already_pro" }, 409);
+
     let customerId = prof?.stripe_customer_id as string | null;
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -62,7 +66,13 @@ Deno.serve(async (req) => {
         metadata: { supabase_user_id: user.id },
       });
       customerId = customer.id;
-      await admin.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
+      // upsert: profiles 行が無い場合（トリガー欠落等）も自己修復する。
+      // 紐付けに失敗したまま決済させると「支払済みなのにPro反映不能」になるため、失敗時は中断。
+      const { error: linkErr } = await admin.from("profiles").upsert(
+        { id: user.id, email: user.email ?? null, stripe_customer_id: customerId },
+        { onConflict: "id" },
+      );
+      if (linkErr) return json({ error: `customer_link_failed: ${linkErr.message}` }, 500);
     }
 
     const session = await stripe.checkout.sessions.create({

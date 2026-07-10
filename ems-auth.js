@@ -42,12 +42,37 @@
     try { document.dispatchEvent(new CustomEvent("ems-pro-change", { detail: v })); } catch (e) {}
   }
 
+  // 直近の is_pro を端末に控えておく（通信エラー時のフォールバック用。正本はサーバー）
+  var PRO_CACHE_KEY = "ems_pro_cache_v1";
+  function cachedPro(uid) {
+    try {
+      var d = JSON.parse(localStorage.getItem(PRO_CACHE_KEY) || "null");
+      return (d && d.uid === uid) ? !!d.pro : null;
+    } catch (e) { return null; }
+  }
+  function savePro(uid, v) {
+    try { localStorage.setItem(PRO_CACHE_KEY, JSON.stringify({ uid: uid, pro: !!v, t: Date.now() })); } catch (e) {}
+  }
+
   // profiles.is_pro を取得して反映（有料判定はサーバー(Webhook)が正本。ここは表示用の取得）
+  // 取得失敗（機内モード等の一時エラー）で Pro 表示を落とすと、有料ユーザーが
+  // 誤って無料枠にロックされるため、失敗時は「最後に確認できた値」を維持する。
   function refreshPro() {
     if (!EMSAuth.client || !EMSAuth.user) { setPro(false); return Promise.resolve(false); }
-    return EMSAuth.client.from("profiles").select("is_pro").eq("id", EMSAuth.user.id).single()
-      .then(function (r) { var v = !!(r && r.data && r.data.is_pro); setPro(v); return v; })
-      .catch(function () { setPro(false); return false; });
+    var uid = EMSAuth.user.id;
+    return EMSAuth.client.from("profiles").select("is_pro").eq("id", uid).single()
+      .then(function (r) {
+        if (r && r.error) throw r.error;
+        var v = !!(r && r.data && r.data.is_pro);
+        setPro(v); savePro(uid, v);
+        return v;
+      })
+      .catch(function () {
+        var c = cachedPro(uid);
+        var v = (c != null) ? c : EMSAuth.isPro;
+        setPro(v);
+        return v;
+      });
   }
 
   if (!window.supabase || !window.supabase.createClient) {
@@ -204,7 +229,12 @@
     var email = (emailEl.value || "").trim();
     var pass = passEl.value || "";
     if (!email) { setMsg("メールアドレスを入力してください", "err"); return; }
-    if (pass.length < 6) { setMsg("パスワードは6文字以上で入力してください", "err"); return; }
+    if (!pass) { setMsg("パスワードを入力してください", "err"); return; }
+    // 新規登録は Supabase 側ポリシー（8文字以上＋英字と数字）に合わせて事前チェック。
+    // ログインは既存アカウント（旧ポリシー時代の短いパスワード）を弾かないよう非空のみ。
+    if (mode === "signup" && !/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(pass)) {
+      setMsg("パスワードは8文字以上で、英字と数字を含めてください", "err"); return;
+    }
 
     track("auth_submit", { mode: mode, context: EMSAuth._context });
     busy(true);
@@ -259,7 +289,7 @@
     if (/already registered|User already/i.test(m)) return "このメールアドレスは既に登録されています";
     if (/Email not confirmed/i.test(m)) return "メール確認が完了していません。受信メールのリンクを開いてください";
     if (/rate limit|too many/i.test(m)) return "回数制限です。しばらくしてからお試しください";
-    if (/Password should be/i.test(m)) return "パスワードは6文字以上にしてください";
+    if (/weak.?password|Password should be/i.test(m)) return "パスワードは8文字以上で、英字と数字を含めてください";
     return m || "エラーが発生しました。もう一度お試しください";
   }
 })();
