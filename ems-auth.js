@@ -1,5 +1,5 @@
 /* ================= EMS AUTH (Supabase) =================
- * メールログイン（メール＋パスワード）。Google は後から追加予定。
+ * メールログイン（メール＋パスワード）＋ Google ログイン。
  * ゲストでは無料の1問をプレイ可能。有料化するときだけログイン。
  * 公開して安全な値のみ（URL / publishable key）をここに置く。
  * service role などのサーバー専用キーは絶対に置かない。
@@ -76,6 +76,7 @@
     if (submitEl) submitEl.addEventListener("click", onSubmit);
     if (passEl) passEl.addEventListener("keydown", function (e) { if (e.key === "Enter") onSubmit(); });
     var so = $("authSignout"); if (so) so.addEventListener("click", doSignOut);
+    var gg = $("authGoogle"); if (gg) gg.addEventListener("click", signInWithGoogle);
 
     if (!EMSAuth.client) { renderHeader(); return; } // SDK読み込み失敗時もゲスト表示（ボタン非表示）にする
 
@@ -183,6 +184,31 @@
     });
   }
 
+  // Google OAuth。ページごと Google へ遷移し、認証後にアプリへ戻ってくる。
+  // 決済途中だった場合は ems-paywall.js が localStorage（pending checkout）から
+  // 自動で Checkout を再開するので、ここでは何もしなくてよい。
+  function signInWithGoogle() {
+    if (!EMSAuth.client) return;
+    var gg = $("authGoogle");
+    if (gg) gg.disabled = true;
+    track("auth_google_start", { context: EMSAuth._context });
+    setMsg("Googleに移動しています…", "ok");
+    EMSAuth.client.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: location.origin + location.pathname }
+    }).then(function (res) {
+      if (res && res.error) {
+        if (gg) gg.disabled = false;
+        track("auth_error", { mode: "google" });
+        setMsg(jpError(res.error), "err");
+      }
+      // 成功時はこのままGoogleへページ遷移するため、何もしない
+    }).catch(function (err) {
+      if (gg) gg.disabled = false;
+      setMsg(jpError(err), "err");
+    });
+  }
+
   function doSignOut() {
     if (!EMSAuth.client) return Promise.resolve();
     busy(true);
@@ -195,6 +221,7 @@
   function busy(on) {
     if (submitEl) submitEl.disabled = on;
     var so = $("authSignout"); if (so) so.disabled = on;
+    var gg = $("authGoogle"); if (gg) gg.disabled = on;
   }
   function setMsg(t, cls) {
     if (!msgEl) return;
