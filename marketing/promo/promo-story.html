@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face {
+    font-family: 'Noto Sans JP';
+    src: url('NotoSansJP.ttf') format('truetype');
+    font-weight: 100 900;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1080px; height:1920px; overflow:hidden; }
+  body {
+    font-family:'Noto Sans JP','Noto Color Emoji',sans-serif;
+    background:
+      radial-gradient(1000px 800px at 90% 6%, rgba(255,200,0,.16), transparent 60%),
+      radial-gradient(900px 800px at 5% 60%, rgba(255,75,75,.10), transparent 55%),
+      linear-gradient(170deg, #fffdf9 0%, #fdf3ea 55%, #ffe9de 100%);
+    color:#26303e;
+    position:relative;
+  }
+  .grad-text {
+    background:linear-gradient(92deg,#ff4b4b 5%,#ff7a2f 55%,#ffb300 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+
+  .pill {
+    position:absolute; top:64px; left:50%; transform:translateX(-50%);
+    background:linear-gradient(90deg,#ff4b4b,#ff6b35);
+    color:#fff; font-size:31px; font-weight:700; letter-spacing:.04em;
+    padding:15px 38px; border-radius:20px; white-space:nowrap;
+    box-shadow:0 8px 22px rgba(255,75,75,.30);
+  }
+
+  .headline { position:absolute; top:158px; left:0; right:0; text-align:center; line-height:1.14; font-weight:900; }
+  .headline .l1 { font-size:84px; letter-spacing:.02em; }
+  .headline .l2 { font-size:120px; letter-spacing:.02em; }
+
+  .feats { position:absolute; top:462px; left:50%; transform:translateX(-50%); display:flex; gap:66px; }
+  .feat { text-align:center; width:170px; }
+  .feat .c {
+    width:104px; height:104px; border-radius:50%; margin:0 auto 12px;
+    display:flex; align-items:center; justify-content:center; font-size:50px;
+    box-shadow:0 6px 16px rgba(38,48,62,.08);
+  }
+  .feat:nth-child(1) .c { background:#ffdfe0; }
+  .feat:nth-child(2) .c { background:#ddf4ff; }
+  .feat:nth-child(3) .c { background:#fff5d6; }
+  .feat .t { font-size:26px; font-weight:700; color:#3c3c3c; white-space:nowrap; }
+
+  /* ── phone mockup ─────────────────────── */
+  .phone {
+    position:absolute; top:680px; left:322px; width:436px; height:900px;
+    background:#3a3d42; border-radius:66px; padding:14px;
+    box-shadow:0 34px 70px rgba(38,48,62,.28), inset 0 0 0 3px #55585e;
+    z-index:5;
+  }
+  .screen { width:100%; height:100%; background:#fff; border-radius:53px; overflow:hidden; position:relative; }
+  .notch {
+    position:absolute; top:12px; left:50%; transform:translateX(-50%);
+    width:120px; height:31px; background:#111; border-radius:16px; z-index:9;
+  }
+  .status { display:flex; justify-content:space-between; align-items:center; padding:16px 32px 2px; font-size:20px; font-weight:700; }
+  .apphead { display:flex; justify-content:space-between; align-items:center; padding:14px 22px 8px; }
+  .apphead .date { font-size:17px; font-weight:700; color:#8a8a8a; }
+  .apphead .title { font-size:22px; font-weight:900; }
+  .apphead .streak { font-size:18px; font-weight:900; color:#ff9600; background:#fff5d6; border-radius:14px; padding:4px 12px; }
+  .chips { display:flex; gap:9px; padding:8px 22px 12px; }
+  .chip { font-size:16px; font-weight:700; color:#6b6b6b; background:#f1f2f4; border-radius:17px; padding:7px 17px; }
+  .chip.on { color:#fff; background:linear-gradient(90deg,#ff4b4b,#ff6b35); }
+
+  .card { margin:2px 18px 14px; border:2px solid #eceff2; border-radius:22px; padding:16px 18px; box-shadow:0 4px 14px rgba(38,48,62,.05); background:#fff; }
+  .tags { display:flex; gap:9px; align-items:center; margin-bottom:10px; }
+  .tag-red { font-size:15px; font-weight:800; color:#ea2b2b; background:#ffdfe0; border-radius:12px; padding:4px 12px; }
+  .tag-gray { font-size:15px; font-weight:800; color:#6b6b6b; background:#f1f2f4; border-radius:12px; padding:4px 12px; }
+  .label { font-size:15px; font-weight:700; color:#8a8a8a; margin-bottom:6px; }
+  .en { font-size:27px; font-weight:900; line-height:1.3; }
+  .jp { font-size:17px; font-weight:700; color:#6b6b6b; margin-top:6px; }
+  .microw { display:flex; align-items:center; gap:14px; margin-top:14px; }
+  .wave { display:flex; align-items:center; gap:6px; flex:1; }
+  .wave i { display:block; width:6px; border-radius:3px; background:#ff8a80; }
+  .mic {
+    width:64px; height:64px; border-radius:50%; flex:0 0 auto;
+    background:linear-gradient(140deg,#ff6b5e,#ff4b4b); display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 14px rgba(255,75,75,.42);
+  }
+  .score { margin-top:14px; background:#d7ffb8; border-radius:14px; padding:9px 15px; display:flex; align-items:center; gap:9px; font-size:18px; font-weight:900; color:#46a302; white-space:nowrap; }
+  .score .xp { margin-left:auto; color:#e6a800; }
+
+  .card2 { margin:0 18px; border:2px solid #eceff2; border-radius:22px 22px 0 0; border-bottom:none; padding:14px 18px 8px; }
+  .opts { display:flex; gap:10px; margin-top:10px; }
+  .opt { font-size:16px; font-weight:800; border:2px solid #e5e5e5; border-radius:14px; padding:8px 15px; color:#3c3c3c; white-space:nowrap; }
+  .opt.ok { border-color:#58cc02; color:#46a302; background:#f2ffe6; }
+
+  .nav {
+    position:absolute; bottom:0; left:0; right:0; height:80px; background:#fff;
+    border-top:2px solid #eef0f2; display:flex; align-items:center; justify-content:space-around; padding:0 14px;
+  }
+  .nav .ic { font-size:28px; opacity:.45; }
+  .nav .ic.on { opacity:1; }
+  .nav .plus {
+    width:62px; height:62px; border-radius:50%; margin-top:-26px;
+    background:linear-gradient(140deg,#ff6b5e,#ff4b4b 60%,#ff8a3d);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 18px rgba(255,75,75,.45);
+  }
+
+  .bubble {
+    position:absolute; top:1300px; left:766px; width:216px; height:216px; border-radius:50%;
+    background:linear-gradient(140deg,#ff4b4b,#ff7a2f 60%,#ffb300);
+    color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:0 14px 30px rgba(255,90,40,.40); z-index:8; text-align:center; line-height:1.22;
+  }
+  .bubble .s { font-size:24px; font-weight:800; }
+  .bubble .b { font-size:44px; font-weight:900; letter-spacing:.02em; }
+  .mascot {
+    position:absolute; top:1330px; left:132px; width:210px; z-index:6;
+    transform:rotate(-7deg) scaleX(-1);
+    filter:drop-shadow(0 12px 18px rgba(38,48,62,.30));
+  }
+
+  .sub { position:absolute; top:1626px; left:0; right:0; text-align:center; font-size:36px; font-weight:900; letter-spacing:.02em; }
+
+  .cta {
+    position:absolute; left:130px; top:1690px; width:820px; height:130px;
+    background:rgba(255,255,255,.94); border-radius:28px;
+    box-shadow:0 14px 34px rgba(38,48,62,.12);
+    display:flex; align-items:center; gap:20px; padding:0 28px;
+  }
+  .cta .icon {
+    width:86px; height:86px; border-radius:22px; flex:0 0 auto;
+    background:linear-gradient(140deg,#ff6b5e,#ff4b4b 55%,#e63c3c);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 18px rgba(255,75,75,.35);
+  }
+  .cta .icon img { width:73px; height:73px; }
+  .cta .name .n { font-size:29px; font-weight:900; white-space:nowrap; }
+  .cta .name .d { font-size:21px; font-weight:900; color:#ea2b2b; margin-top:4px; }
+  .badges { display:flex; flex-direction:column; gap:9px; margin-left:auto; flex:0 0 auto; }
+  .badge {
+    background:#111418; color:#fff; border-radius:12px; padding:7px 17px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .badge .bi { font-size:21px; }
+  .badge .bt { font-size:17px; font-weight:700; white-space:nowrap; }
+
+  .band {
+    position:absolute; left:0; right:0; bottom:0; height:60px;
+    background:linear-gradient(90deg,#ff4b4b 0%,#ff6b35 45%,#ffb300 100%);
+    display:flex; align-items:center; justify-content:center; z-index:4;
+    color:#fff; font-size:24px; font-weight:900; letter-spacing:.14em;
+  }
+</style>
+</head>
+<body>
+
+  <div class="pill">その問診、英語で言えますか?</div>
+
+  <div class="headline">
+    <div class="l1">机のいらない</div>
+    <div class="l2"><span class="grad-text">救急英語</span></div>
+  </div>
+
+  <div class="feats">
+    <div class="feat"><div class="c">🎤</div><div class="t">発音判定</div></div>
+    <div class="feat"><div class="c">🔀</div><div class="t">分岐シナリオ</div></div>
+    <div class="feat"><div class="c">🔤</div><div class="t">単語クイズ</div></div>
+  </div>
+
+  <div class="phone">
+    <div class="screen">
+      <div class="notch"></div>
+      <div class="status">
+        <span>9:41</span>
+        <span style="display:flex;gap:7px;align-items:center;">
+          <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3.5" height="5" rx="1" fill="#111"/><rect x="5.5" y="6" width="3.5" height="8" rx="1" fill="#111"/><rect x="11" y="3" width="3.5" height="11" rx="1" fill="#111"/><rect x="16.5" y="0" width="3.5" height="14" rx="1" fill="#111"/></svg>
+          <svg width="24" height="14" viewBox="0 0 26 14"><rect x="0" y="0" width="22" height="13" rx="3.5" stroke="#111" stroke-width="1.6" fill="none"/><rect x="2.2" y="2.2" width="15" height="8.6" rx="1.8" fill="#111"/><rect x="23.4" y="4" width="2.4" height="5" rx="1.2" fill="#111"/></svg>
+        </span>
+      </div>
+      <div class="apphead">
+        <span class="date">7月10日(金)</span>
+        <span class="title">きょうのレッスン</span>
+        <span class="streak">🔥 7</span>
+      </div>
+      <div class="chips">
+        <span class="chip on">問診</span><span class="chip">単語</span><span class="chip">シナリオ</span><span class="chip">復習</span>
+      </div>
+
+      <div class="card">
+        <div class="tags"><span class="tag-red">🚑 胸痛 | Chest Pain</span><span class="tag-gray">Lv.3</span></div>
+        <div class="label">きょうの1フレーズ — 声に出して</div>
+        <div class="en">When did the chest pain start?</div>
+        <div class="jp">胸の痛みは、いつ始まりましたか?</div>
+        <div class="microw">
+          <div class="wave">
+            <i style="height:12px"></i><i style="height:22px"></i><i style="height:34px"></i><i style="height:18px"></i><i style="height:40px"></i><i style="height:26px"></i><i style="height:44px"></i><i style="height:16px"></i><i style="height:30px"></i><i style="height:38px"></i><i style="height:14px"></i><i style="height:24px"></i><i style="height:34px"></i><i style="height:12px"></i><i style="height:20px"></i>
+          </div>
+          <div class="mic"><svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M18.5 11a.9.9 0 0 0-1.8 0 4.7 4.7 0 0 1-9.4 0 .9.9 0 0 0-1.8 0 6.5 6.5 0 0 0 5.6 6.4V20h-2a.9.9 0 1 0 0 1.8h5.8a.9.9 0 1 0 0-1.8h-2v-2.6A6.5 6.5 0 0 0 18.5 11z"/></svg></div>
+        </div>
+        <div class="score">⭐ GREAT! 発音スコア 92点 <span class="xp">⚡ +10 XP</span></div>
+      </div>
+
+      <div class="card2">
+        <div class="tags"><span class="tag-gray">🔤 単語クイズ</span></div>
+        <div class="en" style="font-size:21px;">「意識」を英語で?</div>
+        <div class="opts"><span class="opt ok">consciousness</span><span class="opt">breathing</span></div>
+        <div class="opts"><span class="opt">pressure</span><span class="opt">injury</span></div>
+      </div>
+
+      <div class="nav">
+        <span class="ic on">🏠</span><span class="ic">📖</span>
+        <span class="plus"><svg width="27" height="27" viewBox="0 0 24 24" fill="#fff"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M18.5 11a.9.9 0 0 0-1.8 0 4.7 4.7 0 0 1-9.4 0 .9.9 0 0 0-1.8 0 6.5 6.5 0 0 0 5.6 6.4V20h-2a.9.9 0 1 0 0 1.8h5.8a.9.9 0 1 0 0-1.8h-2v-2.6A6.5 6.5 0 0 0 18.5 11z"/></svg></span>
+        <span class="ic">🏆</span><span class="ic">👤</span>
+      </div>
+    </div>
+  </div>
+
+  <img class="mascot" src="../../logo.png" alt="">
+  <div class="bubble"><span class="s">学習は</span><span class="b">1日3分</span><span class="s">だけ!</span></div>
+
+  <div class="sub">救急隊の「伝わらない」をなくす場所</div>
+
+  <div class="cta">
+    <div class="icon"><img src="../../logo.png" alt=""></div>
+    <div class="name">
+      <div class="n">机のいらない救急英語</div>
+      <div class="d">nodesk-qq-english.com</div>
+    </div>
+    <div class="badges">
+      <div class="badge"><span class="bi">🌐</span><span class="bt">ブラウザで開くだけ</span></div>
+      <div class="badge"><span class="bi">📲</span><span class="bt">アプリ不要・無料で始められる</span></div>
+    </div>
+  </div>
+
+  <div class="band">今すぐ無料で始めよう!</div>
+
+</body>
+</html>
