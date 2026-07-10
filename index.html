@@ -2,6 +2,27 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<!-- 初回のクリーンな訪問はLP(lp.html)を先に表示する。以降のリソース読込より前に判定する -->
+<script>
+(function () {
+  try {
+    // 一度アプリに入ったことがあれば、以降はLPを挟まない
+    if (localStorage.getItem("ems_entered") === "1") return;
+    var standalone =
+      (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+      window.navigator.standalone === true;
+    // クエリ/ハッシュが付く訪問（LPのCTA ?from=lp・OAuth戻り #access_token/?code・決済戻り ?checkout=…）は
+    // アプリへ入る扱いにする
+    var clean = !location.search && (location.hash === "" || location.hash === "#");
+    if (standalone || !clean) {
+      localStorage.setItem("ems_entered", "1");
+      return;
+    }
+    // 初回のクリーンなブラウザ訪問のみLPへ
+    location.replace("lp.html");
+  } catch (e) {}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>机のいらない救急英語 — 問診トレーナー</title>
 <meta name="description" content="救急隊向けの英語問診トレーナー。OPQRSTやSAMPLEなどの型に沿って、英語の問診を声に出して練習し、発音を自動判定します。学習用アプリ。">
