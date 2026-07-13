@@ -228,6 +228,17 @@ function renderNav(){
 function renderModes(){renderNav();}
 
 function isGuest(){return !(window.EMSAuth && window.EMSAuth.user);}
+// ゲストの結果画面に出す「記録を保存」導線。達成直後（モチベーションが最も高い瞬間）に
+// 「いま得た記録が消える」という損失回避の文脈で無料登録を促す（先に遊ばせて成果で釣る型）。
+function saveCtaHTML(){
+  if(!isGuest()||!(window.EMSAuth&&window.EMSAuth.client))return "";
+  return `<div class="save-cta"><div class="sv-ic">☁️</div><div class="sv-tx"><b>${STATS.xp||0} XP・${STATS.streak||0}日ストリークはまだこの端末だけの記録です</b><br>無料アカウントでクラウドに保存。機種変やアプリ削除でも消えません。</div><button class="b3 b3-blue b3-md" id="saveCtaBtn">無料で記録を保存する</button></div>`;
+}
+function bindSaveCta(placement){
+  const b=$("#saveCtaBtn");if(!b)return;
+  track("signup_cta_view",{placement});
+  b.onclick=()=>{FX.tap();track("signup_cta_click",{placement});if(window.EMSAuth)window.EMSAuth.open("save");};
+}
 // 非Proユーザー向け：今日の無料枠（シナリオ1問＋単語クイズ1回）の残りを表示。
 // 料金はペイウォールを開く前から見えるように「Pro 月1,200円〜」を常に添える。
 function quotaLineHTML(){
@@ -642,9 +653,11 @@ function finishQuiz(){
       ${vCat==="__weak__"?`<p class="fm" style="margin-top:12px;font-weight:900;color:${weakWords().length?"var(--amber-dark)":"var(--green-dark)"}">${weakWords().length?`残りの苦手単語：${weakWords().length}語`:"苦手単語をすべて克服しました！🎉"}</p>`:""}
       ${vCat==="__srs__"?`<p class="fm" style="margin-top:12px;font-weight:900;color:${srsDue().length?"var(--amber-dark)":"var(--green-dark)"}">${srsDue().length?`今日の復習はあと ${srsDue().length}語`:"今日の復習をすべて終えました！🎉"}</p>`:""}
       <div class="fin-acts">${vCat==="__weak__"?(weakWords().length?`<button class="b3 b3-white b3-md" id="qzAgain">続けて復習</button>`:""):vCat==="__srs__"?(srsDue().length?`<button class="b3 b3-white b3-md" id="qzAgain">続けて復習</button>`:""):`<button class="b3 b3-white b3-md" id="qzAgain">もう一度</button>`}<button class="b3 b3-green b3-md" id="qzHome">メニューへ</button></div>
+      ${saveCtaHTML()}
     </div>`;
   const ag=$("#qzAgain");if(ag)ag.onclick=()=>{FX.tap();startQuiz(vCat);};
   $("#qzHome").onclick=()=>{FX.tap();$("#quiz").classList.add("hide");$("#menu").classList.remove("hide");renderMenuBody();};
+  bindSaveCta("quiz_finish");
 }
 
 /* ===== ブラウザ環境の検出（発音判定の可否・アプリ内ブラウザ） ===== */
@@ -907,11 +920,13 @@ function finish(){
       <div class="tiles"><div class="tile t-g"><small>合格</small><b>${passed}</b></div><div class="tile t-b"><small>質問</small><b>${path.length}</b></div><div class="tile t-a"><small>挑戦</small><b>${attempts}</b></div></div>
       <div class="route"><div class="rh">🧭 たどった問診ルート</div>${rows}</div>
       <div class="fin-acts"><button class="b3 b3-white b3-md" id="again">${allPass?"もう一度練習":"全問クリアに挑戦"}</button><button class="b3 b3-white b3-md" id="home">メニューへ</button></div>
+      ${saveCtaHTML()}
       ${finNext&&!testActive?(()=>{const lk=typeof window.emsSceneStatus==="function"&&window.emsSceneStatus(finNext)==="locked";return `<div class="next-up"><div class="nu-label">${lk?"▶ つづきはProで":"▶ つぎのおすすめ"}</div><button class="nu-card" id="nextScene"><span class="nu-ic">${lk?"🔒":finNext.icon}</span><span class="nu-tx"><span class="nu-t">${finNext.title}</span><span class="nu-s">${lk?`Lv${finNext.lv}・タップしてProで解放`:`Lv${finNext.lv}・${FRAMEWORKS[finNext.framework].name}`}</span></span><span class="nu-go">${I.go}</span></button></div>`;})():""}
     </div>`;
   $("#again").onclick=()=>{FX.tap();startScene(scene);};
   $("#home").onclick=()=>{FX.tap();$("#trainer").classList.add("hide");$("#menu").classList.remove("hide");renderMenuBody();};
   const ns=$("#nextScene");if(ns&&finNext){ns.onclick=()=>{FX.tap();startScene(finNext);};}
+  bindSaveCta("scene_finish");
 }
 function recommendNext(justFinishedId){
   // 無料枠モデル：非Proも通常のおすすめロジックを使う。

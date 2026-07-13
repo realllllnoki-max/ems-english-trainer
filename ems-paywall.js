@@ -118,6 +118,10 @@
     }
     if (free) { free.style.display = showFree ? "" : "none"; if (showFree) free.textContent = freeLabel; }
     if (or) or.style.display = showFree ? "" : "none";
+    // 未ログインのゲストには「決済せず無料アカウントだけ作る」導線を出す
+    // （決済ボタン経由でしか登録できないと無料ユーザーが増えないため）
+    var fs = $("payFreeSignup");
+    if (fs) fs.style.display = (auth() && auth().user) ? "none" : "";
   }
   function openPay(reason) {
     var ov = $("payOv");
@@ -371,6 +375,11 @@
       try { if (typeof recommendNext === "function") nx = recommendNext(null); } catch (e) {}
       if (!nx) nx = freeScene();
       if (nx && typeof window.startScene === "function") window.startScene(nx);
+    };
+    var fs = $("payFreeSignup"); if (fs) fs.onclick = function () {
+      closePay();
+      track("signup_cta_click", { placement: "paywall" });
+      var a = auth(); if (a && a.open) a.open("save");
     };
     var up = $("acctUpgrade"); if (up) up.onclick = function () {
       var aov = $("authOv"); if (aov) aov.classList.remove("on");
