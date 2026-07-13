@@ -680,6 +680,13 @@
     display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 0 var(--line);
   }
   .acct-btn:active{transform:translateY(2px);box-shadow:none}
+  /* ===== ゲスト向け「記録を保存」CTA（結果画面）と ペイウォールの無料登録導線 ===== */
+  .save-cta{margin-top:16px;background:#eef7ff;border:2px solid var(--blue);border-radius:var(--r-lg);padding:14px 16px;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
+  .save-cta .sv-ic{font-size:1.6rem;line-height:1}
+  .save-cta .sv-tx{font-size:.82rem;color:var(--ink-soft);line-height:1.6}
+  .save-cta .sv-tx b{color:var(--ink)}
+  .pay-free-signup{display:block;width:100%;margin-top:14px;background:none;border:none;color:var(--ink-soft);font-size:.8rem;font-weight:700;line-height:1.5;text-align:center}
+  .pay-free-signup b{color:var(--blue-dark);text-decoration:underline;text-underline-offset:3px;font-weight:900}
   .acct-btn .av{
     width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;
     font-weight:900;font-size:.72rem;display:inline-flex;align-items:center;justify-content:center;
@@ -908,6 +915,7 @@
     </label>
     <div class="auth-msg" id="payMsg"></div>
     <button class="b3 b3-green b3-lg" id="payGo" type="button" disabled>このプランで続ける</button>
+    <button class="pay-free-signup" id="payFreeSignup" type="button">購入はまだ考え中の方へ：<b>無料アカウント作成</b>だけでもOK（記録をクラウド保存）</button>
   </div>
 </div>
 
@@ -926,10 +934,10 @@
 <!-- ems-analytics.js は emsTrack を定義するため最初に読み込む -->
 <script src="ems-analytics.js?v=2"></script>
 <script src="ems-data.js?v=4"></script>
-<script src="ems-app.js?v=8"></script>
-<script src="ems-auth.js?v=8"></script>
+<script src="ems-app.js?v=9"></script>
+<script src="ems-auth.js?v=9"></script>
 <script src="ems-sync.js?v=4"></script>
-<script src="ems-paywall.js?v=8"></script>
+<script src="ems-paywall.js?v=9"></script>
 <script src="ems-pwa.js?v=4"></script>
 </body>
 </html>

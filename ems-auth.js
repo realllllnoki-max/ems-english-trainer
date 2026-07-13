@@ -28,7 +28,7 @@
       var u = this.user, list = this._cbs.slice();
       for (var i = 0; i < list.length; i++) { try { list[i](u); } catch (e) {} }
     },
-    open: function (ctx) { if (ctx) EMSAuth._context = ctx; if (ctx === "checkout") mode = "signup"; openModal(); },
+    open: function (ctx) { if (ctx) EMSAuth._context = ctx; if (ctx === "checkout" || ctx === "save") mode = "signup"; openModal(); },
     signOut: function () { return doSignOut(); },
     refreshPro: function () { return refreshPro(); }
   };
@@ -94,7 +94,10 @@
     emailEl = $("authEmail"); passEl = $("authPass"); submitEl = $("authSubmit");
     formsEl = $("authForms"); acctEl = $("authAccount"); btn = $("emsAccount");
 
-    if (btn) btn.addEventListener("click", openModal);
+    if (btn) btn.addEventListener("click", function () {
+      if (!EMSAuth.user) track("signup_cta_click", { placement: "header" });
+      openModal();
+    });
     var close = $("authClose"); if (close) close.addEventListener("click", closeModal);
     if (ov) ov.addEventListener("click", function (e) { if (e.target === ov) closeModal(); });
 
@@ -147,8 +150,14 @@
       var em = EMSAuth.user.email || "";
       btn.innerHTML = '<span class="av">' + esc(initial(em)) + "</span>";
       btn.setAttribute("aria-label", "アカウント: " + em);
+    } else if (EMSAuth.client) {
+      // ゲストにもログイン導線を常時表示する。非表示にすると決済フロー経由でしか
+      // アカウント登録に到達できず、無料ユーザーが増えない（計測で登録0件を確認）。
+      btn.style.display = "flex";
+      btn.textContent = "ログイン";
+      btn.setAttribute("aria-label", "ログイン / 無料アカウント作成");
     } else {
-      btn.style.display = "none";
+      btn.style.display = "none"; // SDK読み込み失敗時のみ非表示（押しても機能しないため）
     }
   }
 
@@ -188,8 +197,9 @@
       if (submitEl) submitEl.textContent = "ログイン";
       if (passEl) passEl.setAttribute("autocomplete", "current-password");
     } else {
-      if (title) title.textContent = isCheckout ? "アカウント作成" : "学習を始めよう";
-      if (sub) sub.textContent = isCheckout ? "アカウント作成してProを購入（記録はクラウド保存）" : "アカウント作成で、記録を同期できます（無料）";
+      var isSave = EMSAuth._context === "save";
+      if (title) title.textContent = isCheckout ? "アカウント作成" : isSave ? "記録を保存しよう" : "学習を始めよう";
+      if (sub) sub.textContent = isCheckout ? "アカウント作成してProを購入（記録はクラウド保存）" : isSave ? "無料登録でXP・ストリークをクラウド保存。機種変やアプリ削除でも消えません" : "アカウント作成で、記録を同期できます（無料）";
       if (submitEl) submitEl.textContent = "作成する";
       if (passEl) passEl.setAttribute("autocomplete", "new-password");
     }
