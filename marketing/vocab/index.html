@@ -8,7 +8,8 @@
     {"id":"w2en","type":"string","label":"Word 2 EN","default":"chest","placeholder":""},
     {"id":"w2jp","type":"string","label":"Word 2 JP","default":"胸部"},
     {"id":"w3en","type":"string","label":"Word 3 EN","default":"abdomen"},
-    {"id":"w3jp","type":"string","label":"Word 3 JP","default":"腹部"}
+    {"id":"w3jp","type":"string","label":"Word 3 JP","default":"腹部"},
+    {"id":"beats","type":"string","label":"Stretched beat schedule JSON (set by build.mjs; empty = design beats)","default":""}
   ]'
 >
 <head>
@@ -202,10 +203,12 @@
 
 <script>
 (function () {
-  const R = window.REEL;
   const V = (window.__hyperframes && window.__hyperframes.getVariables)
     ? window.__hyperframes.getVariables()
-    : { cat:'解剖', w1en:'airway', w1jp:'気道', w2en:'chest', w2jp:'胸部', w3en:'abdomen', w3jp:'腹部' };
+    : { cat:'解剖', w1en:'airway', w1jp:'気道', w2en:'chest', w2jp:'胸部', w3en:'abdomen', w3jp:'腹部', beats:'' };
+  // shared timeline (timeline.js); build.mjs passes a stretched schedule so
+  // the TTS always speaks at the same rate — the beats absorb the length
+  const R = V.beats ? window.REEL.withBeats(JSON.parse(V.beats)) : window.REEL;
 
   /* ----- populate + auto-fit type ----- */
   document.getElementById('tag1').textContent = '🚑 きょうの救急単語｜' + V.cat;

@@ -112,13 +112,14 @@ function createSynth(totalMs) {
 
 /* ---------- phrase reel ("きょうの1フレーズ") ---------- */
 export function synthBaseTrack(timeline, outPath) {
-  const { beats, total, wordTimes, beatTimes } = timeline;
+  const { beats, total, wordTimes, beatTimes, voiceWindows } = timeline;
   const beatOf = id => beats.find(b => b[0] === id);
   const s = createSynth(total);
 
-  // duck while a TTS voice speaks: the mascot's opening hook (~0.1–3.05s)
-  // and the English phrase + reply (b5 through b7)
-  s.bgm(beatTimes, [[80, 3050], [beatOf('b5')[1], beatOf('b7')[2]]]);
+  // duck while a TTS voice speaks. build.mjs passes the actual speech windows
+  // (voiceWindows); fall back to the design-schedule defaults: the mascot's
+  // opening hook (~0.1–3.05s) and the English phrase + reply (b5 through b7)
+  s.bgm(beatTimes, voiceWindows || [[80, 3050], [beatOf('b5')[1], beatOf('b7')[2]]]);
 
   s.boom(60);                                    // opening flash impact
   s.kick(150, 0.55);                             // slam lands
@@ -141,13 +142,15 @@ export function synthBaseTrack(timeline, outPath) {
 
 /* ---------- vocab reel ("きょうの救急単語", 3 Q/A rounds) ---------- */
 export function synthVocabTrack(timeline, outPath) {
-  const { beats, total, beatTimes } = timeline;
+  const { beats, total, beatTimes, voiceWindows } = timeline;
   const beatOf = id => beats.find(b => b[0] === id);
   const s = createSynth(total);
 
-  // duck under the hook voice and each answer's pronunciation window
+  // duck under the hook voice and each answer's pronunciation window.
+  // build.mjs passes the actual speech windows (voiceWindows); fall back to
+  // the design-schedule defaults otherwise
   const answers = ['b3', 'b5', 'b7'].map(id => beatOf(id));
-  s.bgm(beatTimes, [[80, 3050], ...answers.map(a => [a[1], a[1] + 2300])]);
+  s.bgm(beatTimes, voiceWindows || [[80, 3050], ...answers.map(a => [a[1], a[1] + 2300])]);
 
   s.boom(60);                                    // opening flash impact
   s.kick(150, 0.55);                             // slam lands

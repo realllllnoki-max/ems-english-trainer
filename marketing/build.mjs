@@ -9,11 +9,15 @@
  *
  * Pipeline:
  *   1. pick the day's content from ems-data.js, deterministically by date
- *   2. synthesize the audio bed (beat-locked BGM/SFX + neural TTS) into
- *      <project>/audio.wav — the composition references it via <audio>
- *   3. render <project>/index.html with `hyperframes render`, injecting the
- *      text as composition --variables
- *   4. write the post caption (.txt)
+ *   2. synthesize the narration TTS at a FIXED speaking rate, measure it,
+ *      and stretch the beats that host speech so everything fits — the
+ *      reading speed never varies with text length; the video length does
+ *   3. synthesize the audio bed (beat-locked BGM/SFX + the TTS clips) on
+ *      that stretched timeline into <project>/audio.wav
+ *   4. render <project>/render.html (index.html with data-duration rewritten
+ *      to the stretched total) via `hyperframes render`, passing the text and
+ *      the stretched beat schedule as composition --variables
+ *   5. write the post caption (.txt)
  *
  * Same date -> same video (content is date-seeded; audio synth is PRNG-seeded).
  *
@@ -189,11 +193,13 @@ function ttsClip(tmpDir, i, spec) {
 function mixClips(baseWav, clips, outWav) {
   if (!clips.length) { fs.copyFileSync(baseWav, outWav); return; }
   // bundled ffmpeg is 4.x — apad keeps every input alive for duration=first,
-  // a fixed post-gain undoes amix's 1/n scaling, alimiter tames peaks
+  // a fixed post-gain undoes amix's 1/n scaling, alimiter tames peaks.
+  // No atempo: narration always plays at the speed it was synthesized at —
+  // the timeline stretches to fit the speech, never the other way around.
   const nIn = clips.length + 1;
   const inputs = clips.flatMap(c => ['-i', c.file]);
   const parts = clips.map((c, i) =>
-    `[${i + 1}:a]atempo=${(c.tempo || 1).toFixed(3)},volume=${c.gain || 1.5},adelay=${c.at}|${c.at},apad[c${i}]`);
+    `[${i + 1}:a]volume=${c.gain || 1.5},adelay=${c.at}|${c.at},apad[c${i}]`);
   const filter = parts.join(';') + ';[0:a]' + clips.map((_, i) => `[c${i}]`).join('') +
     `amix=inputs=${nIn}:duration=first:dropout_transition=0[m];` +
     `[m]volume=${nIn},alimiter=limit=0.95[mix]`;
@@ -202,50 +208,112 @@ function mixClips(baseWav, clips, outWav) {
     { stdio: ['ignore', 'ignore', 'inherit'] });
 }
 
-function buildAudio(content, timeline) {
+/* The reading speed is FIXED: every clip is synthesized at its voice's one
+ * canonical rate and never time-compressed to fit a scene. Instead, the
+ * measured clip durations set a minimum length for the beats that host
+ * speech — the video simply gets longer on wordy days — and the stretched
+ * schedule is returned so the visual render uses the exact same timing. */
+const EN_RATE = '-5%'; // one readable rate for all English narration
+const PAD = { lead: 250, tail: 450, replyLead: 350, replyTail: 800, repeatGap: 400, vocabTail: 650 };
+
+/* Rebuild the beat list left-to-right: every beat keeps its design length
+ * unless minLen (seconds, keyed by beat id) asks for more; later beats
+ * shift right to absorb the growth, so nothing overlaps. */
+function stretchBeats(designBeats, minLen) {
+  const r3 = x => Math.round(x * 1000) / 1000;
+  let cursor = 0;
+  return designBeats.map(([id, s, e]) => {
+    const len = Math.max(e - s, minLen[id] || 0);
+    const out = [id, r3(cursor), r3(cursor + len)];
+    cursor += len;
+    return out;
+  });
+}
+
+/* timeline in ms for the audio synth, derived from a (possibly stretched) REEL */
+function msTimeline(T) {
+  return {
+    beats: T.BEATS.map(([id, s, e]) => [id, Math.round(s * 1000), Math.round(e * 1000)]),
+    total: Math.round(T.TOTAL * 1000),
+    beatTimes: T.beatTimes.map(s => Math.round(s * 1000)),
+    wordTimes: kind === 'vocab' ? []
+      : T.wordTimes(content.q.split(' ').length).map(s => Math.round(s * 1000)),
+  };
+}
+
+/* Synthesize narration + bed into <project>/audio.wav.
+ * Returns the stretched BEATS (seconds) the visuals must be rendered with. */
+function buildAudio(content) {
   const outWav = path.join(PROJECT, 'audio.wav');
-  if (silent) { writeSilence(outWav, timeline.total); return; }
+  if (silent) { writeSilence(outWav, Math.round(R.TOTAL * 1000)); return R.BEATS; }
 
   const tmpDir = fs.mkdtempSync(path.join(HERE, 'output', '.audio-'));
   try {
-    const baseWav = path.join(tmpDir, 'base.wav');
-    const beatOf = id => timeline.beats.find(b => b[0] === id);
-    const clips = [];
     let n = 0;
-    const addTts = (spec, at, windowMs, gain) => {
+    const tts = spec => {
       try {
-        const { file, durMs } = ttsClip(tmpDir, n++, spec);
-        clips.push({ file, at, tempo: Math.min(1.35, Math.max(1, durMs / windowMs)), gain });
-        return durMs;
+        return ttsClip(tmpDir, n++, spec);
       } catch {
         console.warn(`  (TTS unavailable for "${spec.text.slice(0, 30)}…" — continuing without it)`);
         return null;
       }
     };
-    // the mascot's hook — wide window so it plays at DOG_VOICE.rate uncompressed
-    const hook = { text: HOOKS[kind], voice: DOG_VOICE.name, rate: DOG_VOICE.rate, pitch: DOG_VOICE.pitch };
 
+    /* 1) synthesize every clip at its fixed rate and measure it */
+    const hook = tts({ text: HOOKS[kind], voice: DOG_VOICE.name, rate: DOG_VOICE.rate, pitch: DOG_VOICE.pitch });
+    const spoken = kind === 'vocab'
+      ? content.words.map(w => tts({ text: w.en, voice: EN_VOICE, rate: EN_RATE }))
+      : [tts({ text: content.q, voice: EN_VOICE, rate: EN_RATE }),
+         tts({ text: content.a, voice: EN_VOICE, rate: EN_RATE })];
+
+    /* 2) minimum beat lengths (seconds) so each clip fits at full speed */
+    const need = {};
+    const lenOf = id => { const b = R.beat(id); return b[2] - b[1]; };
+    // the hook starts at 0.15s and plays across b1 into b2
+    if (hook) need.b2 = (150 + hook.durMs + 300) / 1000 - lenOf('b1');
     if (kind === 'vocab') {
-      synthVocabTrack(timeline, baseWav);
-      addTts(hook, 150, 3000, 1.7);
-      // each answer: say the word, then repeat it if the window allows
+      // each answer beat says its word twice
       ['b3', 'b5', 'b7'].forEach((id, i) => {
-        const a = beatOf(id);
-        const spec = { text: content.words[i].en, voice: EN_VOICE, rate: '-5%' };
-        const dur = addTts(spec, a[1] + 250, 2000, 1.6);
-        if (dur !== null && dur * 2 + 650 < a[2] - a[1] - 400) {
-          clips.push({ ...clips[clips.length - 1], at: a[1] + 250 + dur + 400 });
-        }
+        const c = spoken[i];
+        if (c) need[id] = (PAD.lead + c.durMs * 2 + PAD.repeatGap + PAD.vocabTail) / 1000;
       });
     } else {
-      synthBaseTrack(timeline, baseWav);
-      addTts(hook, 150, 3000, 1.7);
-      addTts({ text: content.q, voice: EN_VOICE, rate: '-5%' },
-        beatOf('b5')[1] + 250, beatOf('b5')[2] - beatOf('b5')[1] - 400, 1.5);
-      addTts({ text: content.a, voice: EN_VOICE, rate: '-5%' },
-        beatOf('b6')[1] + 350, beatOf('b7')[2] - beatOf('b6')[1] - 800, 1.5);
+      const [q, a] = spoken;
+      if (q) need.b5 = (PAD.lead + q.durMs + PAD.tail) / 1000;
+      // the reply is spoken over b6 (EN) and still read over b7 (JP): stretch b6
+      if (a) need.b6 = (PAD.replyLead + a.durMs + PAD.replyTail) / 1000 - lenOf('b7');
     }
+    const beats = stretchBeats(R.BEATS, need);
+    const timeline = msTimeline(R.withBeats(beats));
+    const beatOf = id => timeline.beats.find(b => b[0] === id);
+
+    /* 3) place the clips on the stretched schedule */
+    const clips = [];
+    const voiceWindows = []; // actual speech spans (ms) — BGM ducks here
+    const place = (clip, at, gain) => {
+      if (!clip) return;
+      clips.push({ file: clip.file, at, gain });
+      voiceWindows.push([Math.max(0, at - 100), at + clip.durMs + 200]);
+    };
+    place(hook, 150, 1.7);
+    if (kind === 'vocab') {
+      ['b3', 'b5', 'b7'].forEach((id, i) => {
+        const c = spoken[i];
+        if (!c) return;
+        const start = beatOf(id)[1] + PAD.lead;
+        place(c, start, 1.6);
+        place(c, start + c.durMs + PAD.repeatGap, 1.6); // say it twice
+      });
+    } else {
+      place(spoken[0], beatOf('b5')[1] + PAD.lead, 1.5);
+      place(spoken[1], beatOf('b6')[1] + PAD.replyLead, 1.5);
+    }
+
+    /* 4) synth the bed on the stretched timeline and mix */
+    const baseWav = path.join(tmpDir, 'base.wav');
+    (kind === 'vocab' ? synthVocabTrack : synthBaseTrack)({ ...timeline, voiceWindows }, baseWav);
     mixClips(baseWav, clips, outWav);
+    return beats;
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -294,21 +362,16 @@ const suffix = kind === 'vocab' ? '-vocab' : '';
 const outMp4 = arg('out', path.join(outDir, `${dateStr}${suffix}.mp4`));
 const outTxt = outMp4.replace(/\.mp4$/, '.txt');
 
-// audio timeline (ms) derived from the project's shared timeline
-const timeline = {
-  beats: R.BEATS.map(([id, s, e]) => [id, Math.round(s * 1000), Math.round(e * 1000)]),
-  total: Math.round(R.TOTAL * 1000),
-  beatTimes: R.beatTimes.map(s => Math.round(s * 1000)),
-  wordTimes: kind === 'vocab' ? []
-    : R.wordTimes(content.q.split(' ').length).map(s => Math.round(s * 1000)),
-};
-
 ensureFont();
 ensureExecutable(ffmpegPath());
 ensureExecutable(ffprobePath());
 
-console.log(silent ? 'Writing silent bed…' : 'Synthesizing audio…');
-buildAudio(content, timeline);
+console.log(silent ? 'Writing silent bed…' : 'Synthesizing narration (fixed speaking rate)…');
+const beats = buildAudio(content);
+const total = beats[beats.length - 1][2];
+if (total > R.TOTAL) {
+  console.log(`Timeline stretched ${R.TOTAL.toFixed(1)}s -> ${total.toFixed(1)}s so the narration keeps its speed.`);
+}
 
 if (audioOnly) {
   console.log(`Wrote ${path.join(PROJECT, 'audio.wav')} — run \`cd ${path.basename(PROJECT)} && npx hyperframes preview\``);
@@ -329,16 +392,28 @@ const env = {
 const shell = headlessShellPath();
 if (shell) env.PRODUCER_HEADLESS_SHELL_PATH = shell;
 
-const variables = JSON.stringify(kind === 'vocab'
-  ? { cat: content.cat,
-      w1en: content.words[0].en, w1jp: content.words[0].jp,
-      w2en: content.words[1].en, w2jp: content.words[1].jp,
-      w3en: content.words[2].en, w3jp: content.words[2].jp }
-  : { q: content.q, qjp: content.qjp, a: content.a, ajp: content.ajp });
+/* Derived composition for this render: same markup as index.html, but with
+ * data-duration rewritten to the stretched total — the renderer reads the
+ * composition duration from the static attribute, so the video length
+ * follows the narration. The beat schedule itself travels as a variable. */
+const renderHtml = 'render.html';
+fs.writeFileSync(path.join(PROJECT, renderHtml),
+  fs.readFileSync(path.join(PROJECT, 'index.html'), 'utf8')
+    .replace(/data-duration="[0-9.]+"/g, `data-duration="${total}"`));
 
-console.log(`Rendering with HyperFrames (kind=${kind}, quality=${quality})…`);
+const variables = JSON.stringify({
+  ...(kind === 'vocab'
+    ? { cat: content.cat,
+        w1en: content.words[0].en, w1jp: content.words[0].jp,
+        w2en: content.words[1].en, w2jp: content.words[1].jp,
+        w3en: content.words[2].en, w3jp: content.words[2].jp }
+    : { q: content.q, qjp: content.qjp, a: content.a, ajp: content.ajp }),
+  beats: JSON.stringify(beats),
+});
+
+console.log(`Rendering with HyperFrames (kind=${kind}, quality=${quality}, ${total.toFixed(1)}s)…`);
 const tmpVideo = path.join(outDir, `.${path.basename(outMp4, '.mp4')}.video.mp4`);
-const res = spawnSync(hf, ['render', '--quality', quality, '--fps', String(fps),
+const res = spawnSync(hf, ['render', '-c', renderHtml, '--quality', quality, '--fps', String(fps),
   '--strict-variables', '--variables', variables, '--output', tmpVideo],
   { cwd: PROJECT, env, stdio: 'inherit' });
 if (res.status !== 0) { console.error('render failed'); process.exit(res.status || 1); }

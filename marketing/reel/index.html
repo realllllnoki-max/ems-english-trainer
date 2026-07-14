@@ -5,7 +5,8 @@
     {"id":"q","type":"string","label":"English phrase","default":"Can you tell me what happened?"},
     {"id":"qjp","type":"string","label":"JP phrase","default":"何があったか教えてもらえますか？"},
     {"id":"a","type":"string","label":"Patient reply (EN)","default":"I suddenly felt chest pain."},
-    {"id":"ajp","type":"string","label":"Patient reply (JP)","default":"急に胸が痛くなりました。"}
+    {"id":"ajp","type":"string","label":"Patient reply (JP)","default":"急に胸が痛くなりました。"},
+    {"id":"beats","type":"string","label":"Stretched beat schedule JSON (set by build.mjs; empty = design beats)","default":""}
   ]'
 >
 <head>
@@ -218,11 +219,13 @@
 
 <script>
 (function () {
-  const R = window.REEL;                       // shared timeline (timeline.js)
   const V = (window.__hyperframes && window.__hyperframes.getVariables)
     ? window.__hyperframes.getVariables()
     : { q:'Can you tell me what happened?', qjp:'何があったか教えてもらえますか？',
-        a:'I suddenly felt chest pain.', ajp:'急に胸が痛くなりました。' };
+        a:'I suddenly felt chest pain.', ajp:'急に胸が痛くなりました。', beats:'' };
+  // shared timeline (timeline.js); build.mjs passes a stretched schedule so
+  // the TTS always speaks at the same rate — the beats absorb the length
+  const R = V.beats ? window.REEL.withBeats(JSON.parse(V.beats)) : window.REEL;
 
   /* particle-aware JP line splitter (ported from the original template) */
   function splitJp(s) {
