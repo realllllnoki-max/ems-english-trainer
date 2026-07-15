@@ -178,7 +178,10 @@ rising jingle sting at the end (7-10s). No vocals. Clean ending.
 | C2 学習(3–7s) | `458c495c-f4da-499e-b101-f92b3c3f849a` | アプリ画面の英文に軽微なタイポあり(下記) |
 | C3 成功(7–10s) | `e5f20988-1c52-4a68-9ea4-553258f9e22f` | 初回は安全フィルタ誤判定→表現を緩めて再生成 |
 
-結合はffmpeg(3.0s+4.0s+3.0s、`-crf 19`)。テロップはNoto Sans JP Bold+ブランド赤(#ea2b2b)の座布団で焼き込み。
+結合はffmpeg。テロップはNoto Sans JP Bold+ブランド赤(#ea2b2b)の座布団で焼き込み。
+完成版 `pr-anime-final-with-endcard.mp4`(12.7秒)はシーン間に0.5秒のトランジションを適用:
+C1→C2 ホワイトフラッシュ(xfade fadewhite)、C2→C3 ウィップパン風スライド(slideleft)、
+C3→エンドカード ホワイトフェード(fadewhite)。音声も各境界で0.5秒クロスフェード。
 
 **既知の改善余地**
 - C2のスマホ画面が "cheest pain" と誤綴り(AI生成文字の限界)。差し替える場合は実アプリのスクリーンショットを画面部分に合成
